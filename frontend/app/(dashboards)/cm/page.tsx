@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { 
   HeartPulse, AlertTriangle, Trophy, Radio, MessageSquare, 
   Flame, Waves, Zap, Droplet, Wind, Stethoscope, ShieldAlert,
-  Bot, TrendingUp, AlertOctagon, CheckCircle2, Star, MapPin
+  Bot, TrendingUp, AlertOctagon, CheckCircle2, Star, MapPin, ShieldCheck
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -63,18 +63,6 @@ export default function CMWarRoomDashboard() {
     };
   });
 
-  // Fallback if empty
-  if (emergencyAlerts.length === 0) {
-    emergencyAlerts.push({
-      id: 'EMG-01',
-      type: 'Simulation Active',
-      loc: 'CM Command HQ, Delhi',
-      time: 'Now',
-      icon: ShieldAlert,
-      severity: 'Medium'
-    });
-  }
-
   // 2. DISTRICT RANKINGS COMPILATION
   const districtGroups: { [key: string]: { open: number, critical: number, ratings: number[] } } = {};
   complaints.forEach(c => {
@@ -99,7 +87,7 @@ export default function CMWarRoomDashboard() {
     const totalRatings = group.ratings.length;
     const avgCsat = totalRatings > 0 
       ? parseFloat((group.ratings.reduce((a, b) => a + b, 0) / totalRatings).toFixed(1))
-      : 4.5;
+      : 0.0;
     
     // Performance score calculations
     const score = Math.max(30, 100 - (group.open * 2) - (group.critical * 5));
@@ -116,10 +104,6 @@ export default function CMWarRoomDashboard() {
       risk: Math.round(risk)
     };
   }).sort((a, b) => b.score - a.score);
-
-  if (districtRankings.length === 0) {
-    districtRankings.push({ id: 1, name: 'New Delhi', score: 95, open: 0, critical: 0, csat: 4.8, heatIndex: 10, risk: 10 });
-  }
 
   // 3. LIVE INCIDENT FEED
   const liveIncidentFeed = complaints.slice(0, 6).map(c => {
@@ -275,24 +259,31 @@ export default function CMWarRoomDashboard() {
             <span className="bg-white text-red-600 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-widest shadow-sm">{emergencyAlerts.length} Active</span>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-            {emergencyAlerts.map((alert, i) => (
-              <div key={i} className="p-3 bg-white rounded-xl border-l-4 border-l-red-500 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <alert.icon className="w-12 h-12 text-red-600" />
-                </div>
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-xs font-black text-red-700 uppercase tracking-wider">{alert.type}</p>
-                    <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{alert.time}</span>
+            {emergencyAlerts.length > 0 ? (
+              emergencyAlerts.map((alert, i) => (
+                <div key={i} className="p-3 bg-white rounded-xl border-l-4 border-l-red-500 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <alert.icon className="w-12 h-12 text-red-600" />
                   </div>
-                  <p className="text-sm font-bold text-gray-900">{alert.loc}</p>
-                  <div className="mt-2 flex justify-between items-center">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100">{alert.severity} Priority</span>
-                    <button className="text-[10px] font-black text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700 transition-colors uppercase">Escalate</button>
+                  <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="text-xs font-black text-red-700 uppercase tracking-wider">{alert.type}</p>
+                      <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{alert.time}</span>
+                    </div>
+                    <p className="text-sm font-bold text-gray-900">{alert.loc}</p>
+                    <div className="mt-2 flex justify-between items-center">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-red-500 bg-red-50 px-2 py-0.5 rounded border border-red-100">{alert.severity} Priority</span>
+                      <button className="text-[10px] font-black text-white bg-red-600 px-3 py-1 rounded hover:bg-red-700 transition-colors uppercase">Escalate</button>
+                    </div>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-red-900">
+                <ShieldCheck className="w-8 h-8 text-green-600 mb-2" />
+                <p className="text-xs font-bold uppercase tracking-wider">No Active Emergency Alerts</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>
@@ -325,34 +316,42 @@ export default function CMWarRoomDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {districtRankings.map((dist, i) => (
-                  <tr key={dist.name} className="hover:bg-gray-50/80 transition-colors">
-                    <td className="p-4 pl-6 flex items-center gap-3">
-                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${i === 0 ? 'bg-[#FF9933] text-white shadow-md' : 'bg-gray-100 text-gray-500'}`}>{i + 1}</span>
-                      <span className="font-bold text-gray-900 whitespace-nowrap">{dist.name}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-black ${dist.score >= 80 ? 'text-green-600 bg-green-50' : dist.score >= 60 ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50'}`}>{dist.score}/100</span>
-                    </td>
-                    <td className="p-4 font-bold text-gray-700">{dist.open}</td>
-                    <td className="p-4 font-black text-red-600">{dist.critical}</td>
-                    <td className="p-4">
-                      <div className="flex items-center text-xs font-bold text-gray-700">
-                        <Star className="w-3.5 h-3.5 mr-1 text-[#FF9933] fill-[#FF9933]" /> {dist.csat}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-red-500" style={{ width: `${dist.risk}%` }}></div>
-                      </div>
-                    </td>
-                    <td className="p-4 pr-6">
-                      <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${dist.heatIndex > 80 ? 'bg-red-50 text-red-700 border-red-200' : dist.heatIndex > 50 ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
-                        {dist.heatIndex} Heat
-                      </span>
+                {districtRankings.length > 0 ? (
+                  districtRankings.map((dist, i) => (
+                    <tr key={dist.name} className="hover:bg-gray-50/80 transition-colors">
+                      <td className="p-4 pl-6 flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${i === 0 ? 'bg-[#FF9933] text-white shadow-md' : 'bg-gray-100 text-gray-500'}`}>{i + 1}</span>
+                        <span className="font-bold text-gray-900 whitespace-nowrap">{dist.name}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className={`inline-flex px-2 py-0.5 rounded text-xs font-black ${dist.score >= 80 ? 'text-green-600 bg-green-50' : dist.score >= 60 ? 'text-orange-600 bg-orange-50' : 'text-red-600 bg-red-50'}`}>{dist.score}/100</span>
+                      </td>
+                      <td className="p-4 font-bold text-gray-700">{dist.open}</td>
+                      <td className="p-4 font-black text-red-600">{dist.critical}</td>
+                      <td className="p-4">
+                        <div className="flex items-center text-xs font-bold text-gray-700">
+                          <Star className="w-3.5 h-3.5 mr-1 text-[#FF9933] fill-[#FF9933]" /> {dist.csat}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-red-500" style={{ width: `${dist.risk}%` }}></div>
+                        </div>
+                      </td>
+                      <td className="p-4 pr-6">
+                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded border ${dist.heatIndex > 80 ? 'bg-red-50 text-red-700 border-red-200' : dist.heatIndex > 50 ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                          {dist.heatIndex} Heat
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-xs font-black text-gray-400 uppercase tracking-widest">
+                      No Active District Submissions
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
