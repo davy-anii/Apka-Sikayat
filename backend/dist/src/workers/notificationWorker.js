@@ -1,0 +1,197 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.processNotificationJob = processNotificationJob;
+const dotenv_1 = __importDefault(require("dotenv"));
+const path_1 = __importDefault(require("path"));
+const queueService_1 = require("../services/queueService");
+const smsService_1 = require("../services/smsService");
+const fcmService_1 = require("../services/fcmService");
+const firebaseAdmin_1 = require("../config/firebaseAdmin");
+// Load environment variables
+dotenv_1.default.config({ path: path_1.default.join(__dirname, '../frontend/.env') });
+const PORT = process.env.PORT || 5002;
+const BROADCAST_URL = `http://localhost:${PORT}/api/internal/broadcast`;
+// Map status to FCM notification templates
+function getFCMTemplate(status, id, extra) {
+    const { department = 'the department', officer = 'an officer' } = extra;
+    switch (status) {
+        case 'Submitted':
+            return {
+                title: 'Grievance Submitted',
+                body: `Your complaint (ID: ${id}) has been successfully submitted and is under AI validation.`
+            };
+        case 'AI_Validated':
+            return {
+                title: 'AI Validation Approved',
+                body: `AI has successfully validated and verified the authenticity of your grievance ${id}.`
+            };
+        case 'Assigned_Dept':
+            return {
+                title: 'Department Assigned',
+                body: `Your grievance ${id} has been routed and assigned to ${department}.`
+            };
+        case 'Officer_Assigned':
+            return {
+                title: 'Officer Assigned',
+                body: `A resolving officer has been assigned to handle your grievance ${id}.`
+            };
+        case 'Investigation_Started':
+            return {
+                title: 'Investigation In Progress',
+                body: `The department has initiated investigation into grievance ${id}.`
+            };
+        case 'Inspection_Scheduled':
+            return {
+                title: 'Field Inspection Scheduled',
+                body: `A field inspection has been scheduled for grievance ${id}.`
+            };
+        case 'Inspection_Completed':
+            return {
+                title: 'Field Inspection Completed',
+                body: `The officer has completed the site inspection for grievance ${id}.`
+            };
+        case 'Action_In_Progress':
+            return {
+                title: 'Resolution Action Started',
+                body: `Work is now active at the location for grievance ${id}.`
+            };
+        case 'Resolved':
+            return {
+                title: 'Grievance Marked Resolved',
+                body: `The PWD/Municipality has marked grievance ${id} as resolved. Please verify.`
+            };
+        case 'Citizen_Verified':
+            return {
+                title: 'Grievance Verified',
+                body: `You have successfully verified the resolution of grievance ${id}.`
+            };
+        case 'Closed':
+            return {
+                title: 'Grievance Closed',
+                body: `Your grievance ${id} has been closed successfully. Thank you for your feedback.`
+            };
+        default:
+            return {
+                title: 'Grievance Update',
+                body: `The status of your grievance ${id} has been updated to: ${status}.`
+            };
+    }
+}
+// Background Worker processing function
+async function processNotificationJob(jobData) {
+    const { complaintId, status, notes, recipientUid, recipientPhone, category, department } = jobData;
+    console.log(`[Worker] Started processing notification flow for complaint: ${complaintId}`);
+    try {
+        // 1. Send SMS notifications (for supported stages)
+        if (recipientPhone) {
+            try {
+                await (0, smsService_1.sendSMS)(status, {
+                    id: complaintId,
+                    category,
+                    department,
+                    phoneNumber: recipientPhone
+                });
+            }
+            catch (smsError) {
+                console.error(`[Worker] SMS delivery failed:`, smsError.message);
+            }
+        }
+        // 2. Send Mobile Push Notifications (FCM)
+        try {
+            const fcmTemplate = getFCMTemplate(status, complaintId, { department });
+            await (0, fcmService_1.sendPushNotification)(recipientUid, {
+                title: fcmTemplate.title,
+                body: fcmTemplate.body,
+                data: {
+                    complaintId,
+                    status
+                }
+            });
+        }
+        catch (fcmError) {
+            console.error(`[Worker] FCM push notification failed:`, fcmError.message);
+        }
+        // 3. Broadcast Real-Time updates to citizen dashboard via Socket.IO
+        try {
+            // Fetch latest complaint status and timeline from database to broadcast
+            let currentStep = 1;
+            let timeline = [];
+            let trackingToken = null;
+            if (firebaseAdmin_1.isFirebaseAdminInitialized && firebaseAdmin_1.adminDb) {
+                const docSnap = await firebaseAdmin_1.adminDb.collection('complaints').doc(complaintId).get();
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    currentStep = data?.currentStep || 1;
+                    timeline = data?.timeline || [];
+                    trackingToken = data?.trackingToken || null;
+                }
+            }
+            else {
+                // Fallback for simulation/in-memory
+                const { STAGES } = require('../services/eventService');
+                const stageIndex = STAGES.findIndex((s) => s.status === status);
+                currentStep = stageIndex !== -1 ? stageIndex + 1 : 1;
+                const fallbackDate = new Date().toLocaleDateString('en-IN', {
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+                timeline = STAGES.map((s) => ({
+                    step: s.step,
+                    title: s.title,
+                    iconName: s.iconName,
+                    desc: s.desc,
+                    date: s.step <= currentStep ? fallbackDate : null
+                }));
+            }
+            const response = await fetch(BROADCAST_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    complaintId,
+                    status,
+                    currentStep,
+                    timeline,
+                    notes,
+                    trackingToken
+                })
+            });
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[Worker] Broadcasting HTTP request failed: ${response.status} - ${errorText}`);
+            }
+            else {
+                console.log(`[Worker] Successfully triggered real-time Socket.IO broadcast for ${complaintId}`);
+            }
+        }
+        catch (broadcastError) {
+            console.error(`[Worker] Broadcast trigger failed:`, broadcastError.message);
+        }
+        console.log(`[Worker] Finished processing notification flow for complaint: ${complaintId}`);
+    }
+    catch (error) {
+        console.error(`[Worker] Critical error processing notification flow for ${complaintId}:`, error.message);
+        throw error;
+    }
+}
+// Support running the worker independently as a separate microservice process
+async function runStandaloneWorker() {
+    console.log('[Worker Standalone] Starting worker microservice...');
+    try {
+        const queue = await (0, queueService_1.initQueueService)();
+        queue.processJobs(processNotificationJob);
+        console.log('[Worker Standalone] Worker successfully initialized and listening for jobs.');
+    }
+    catch (error) {
+        console.error('[Worker Standalone] Critical error initializing worker:', error);
+        process.exit(1);
+    }
+}
+// Detect if started directly from command line (e.g. ts-node worker.ts)
+if (require.main === module) {
+    runStandaloneWorker();
+}

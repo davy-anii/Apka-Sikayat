@@ -1,4 +1,4 @@
-import { isFirebaseAdminInitialized, adminDb } from '../firebaseAdmin';
+import { isFirebaseAdminInitialized, adminDb } from '../config/firebaseAdmin';
 
 export interface TimelineStep {
   step: number;

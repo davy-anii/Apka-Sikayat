@@ -16,7 +16,8 @@ import { initDatabase, logSMS, updateSMSStatus, getSMSLogs, getSMSStats, isPostg
 import { initRateLimiter, checkRateLimit } from './services/rateLimiter';
 import { initSMSQueue, getSMSQueue, isRedisConnected, closeRedis } from './services/bullmqService';
 import { maskPhoneNumber } from './services/cryptoService';
-import { isFirebaseAdminInitialized, adminDb } from './firebaseAdmin';
+import { isFirebaseAdminInitialized, adminDb } from './config/firebaseAdmin';
+import { validateGrievance } from './services/grievanceValidator';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../frontend/.env') });
@@ -349,6 +350,21 @@ app.get('/api/complaints/track/:token', publicTrackRateLimiter, async (req, res)
   }
 });
 
+// 6. AI Validation Endpoint (Called by frontend)
+app.post('/api/validate-grievance', async (req, res) => {
+  try {
+    const { image, title, description, category, district } = req.body;
+    if (!image) {
+      return res.status(400).json({ error: 'Image is required for validation.' });
+    }
+    const result = await validateGrievance(image, title, description, category, district);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('[API Server] AI Validation Error:', error.message);
+    return res.status(500).json({ error: error.message || 'An error occurred during AI validation.' });
+  }
+});
+
 // 6. Diagnostics Endpoint: Health check for Render deployments
 app.get('/health', (req, res) => {
   const dbStatus = isPostgresConnected() ? 'connected' : 'disconnected';
@@ -377,7 +393,7 @@ server.listen(PORT, async () => {
   if (process.env.NODE_ENV !== 'production' || !process.env.REDIS_HOST) {
     console.log('[API Server] Starting legacy queue worker inline...');
     const legacyQueue = await initQueueService();
-    const { processNotificationJob } = require('./worker');
+    const { processNotificationJob } = require('./workers/notificationWorker');
     legacyQueue.processJobs(processNotificationJob);
   }
 });

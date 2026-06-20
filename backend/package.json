@@ -2,11 +2,11 @@
   "name": "apka-sikayat-backend",
   "version": "1.0.0",
   "description": "Backend services for Apka Sikayat Complaint Lifecycle Tracker",
-  "main": "server.ts",
+  "main": "dist/src/server.js",
   "scripts": {
-    "dev": "ts-node server.ts",
-    "start": "ts-node server.ts",
-    "worker": "ts-node worker.ts",
+    "dev": "ts-node src/server.ts",
+    "start": "node dist/src/server.js",
+    "worker": "ts-node src/workers/notificationWorker.ts",
     "build": "tsc"
   },
   "dependencies": {

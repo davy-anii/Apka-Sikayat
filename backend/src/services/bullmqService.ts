@@ -6,7 +6,7 @@ import { sendTwilioSMS } from './twilioService';
 import { logSMS, updateSMSStatus, SMSLogData } from './databaseService';
 import { renderTemplate } from './templateManager';
 import { checkRateLimit } from './rateLimiter';
-import { isFirebaseAdminInitialized, adminDb } from '../firebaseAdmin';
+import { isFirebaseAdminInitialized, adminDb } from '../config/firebaseAdmin';
 import { getBackendAppUrl } from './urlHelper';
 
 dotenv.config({ path: path.join(__dirname, '../../frontend/.env') });

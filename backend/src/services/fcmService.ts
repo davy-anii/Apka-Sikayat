@@ -1,4 +1,4 @@
-import { isFirebaseAdminInitialized, adminDb, adminMessaging } from '../firebaseAdmin';
+import { isFirebaseAdminInitialized, adminDb, adminMessaging } from '../config/firebaseAdmin';
 
 export interface PushNotificationPayload {
   title: string;

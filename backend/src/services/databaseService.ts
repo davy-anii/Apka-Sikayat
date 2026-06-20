@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import { isFirebaseAdminInitialized, adminDb } from '../firebaseAdmin';
+import { isFirebaseAdminInitialized, adminDb } from '../config/firebaseAdmin';
 import { encrypt, decrypt } from './cryptoService';
 import dotenv from 'dotenv';
 import path from 'path';

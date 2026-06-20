@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import { initQueueService, NotificationJobData } from './services/queueService';
-import { sendSMS } from './services/smsService';
-import { sendPushNotification } from './services/fcmService';
-import { isFirebaseAdminInitialized, adminDb } from './firebaseAdmin';
+import { initQueueService, NotificationJobData } from '../services/queueService';
+import { sendSMS } from '../services/smsService';
+import { sendPushNotification } from '../services/fcmService';
+import { isFirebaseAdminInitialized, adminDb } from '../config/firebaseAdmin';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../frontend/.env') });
@@ -140,7 +140,7 @@ export async function processNotificationJob(jobData: NotificationJobData): Prom
         }
       } else {
         // Fallback for simulation/in-memory
-        const { STAGES } = require('./services/eventService');
+        const { STAGES } = require('../services/eventService');
         const stageIndex = STAGES.findIndex((s: any) => s.status === status);
         currentStep = stageIndex !== -1 ? stageIndex + 1 : 1;
         

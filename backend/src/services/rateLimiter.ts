@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { isFirebaseAdminInitialized, adminDb } from '../firebaseAdmin';
+import { isFirebaseAdminInitialized, adminDb } from '../config/firebaseAdmin';
 import dotenv from 'dotenv';
 import path from 'path';
 

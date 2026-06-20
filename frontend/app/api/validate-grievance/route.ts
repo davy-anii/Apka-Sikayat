@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { validateGrievance } from "@/backend/services/grievanceValidator";
+import { getBackendUrl } from "@/lib/urlHelper";
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +13,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await validateGrievance(image, title, description, category, district);
+    const backendUrl = getBackendUrl();
+    const response = await fetch(`${backendUrl}/api/validate-grievance`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ image, title, description, category, district }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return NextResponse.json(
+        { error: errorData.error || `Backend validation failed with status ${response.status}` },
+        { status: response.status }
+      );
+    }
+
+    const result = await response.json();
     return NextResponse.json(result);
   } catch (error: any) {
     console.error("AI Validation Route error:", error);
