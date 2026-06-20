@@ -28,3 +28,17 @@ export function generateTrackingToken(): string {
   // Cryptographically robust fallback
   return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
 }
+
+export function getBackendUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:5002';
+    }
+    // Handle dynamic ngrok URLs mapping 5001/3000 to 5002
+    return window.location.origin.replace(':5001', ':5002').replace(':3000', ':5002');
+  }
+  return 'http://localhost:5002';
+}

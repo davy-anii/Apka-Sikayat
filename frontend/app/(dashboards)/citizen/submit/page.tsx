@@ -148,7 +148,7 @@ export default function SubmitComplaintPage() {
       const complaintId = `CMP-${datePart}-${randPart}`;                 // e.g. CMP-20260620-4732
 
       // Generate tracking token and link
-      const { generateTrackingToken, getAppUrl } = require('@/lib/urlHelper');
+      const { generateTrackingToken, getAppUrl, getBackendUrl } = require('@/lib/urlHelper');
       const trackingToken = generateTrackingToken();
       const appUrl = getAppUrl();
       const trackingLink = `${appUrl}/track/${trackingToken}`;
@@ -191,7 +191,8 @@ export default function SubmitComplaintPage() {
 
       // Trigger Twilio SMS alert and database logger on the backend
       try {
-        await fetch(`http://localhost:5002/api/complaints/${complaintId}/status`, {
+        const backendUrl = getBackendUrl();
+        await fetch(`${backendUrl}/api/complaints/${complaintId}/status`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

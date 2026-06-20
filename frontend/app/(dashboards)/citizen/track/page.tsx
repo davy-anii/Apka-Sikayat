@@ -55,7 +55,9 @@ function TrackComplaintContent() {
   // Initialize Socket.IO connection
   useEffect(() => {
     // Connect to backend Express/Socket.IO server
-    const socket = io('http://localhost:5002', {
+    const { getBackendUrl } = require('@/lib/urlHelper');
+    const backendUrl = getBackendUrl();
+    const socket = io(backendUrl, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000
