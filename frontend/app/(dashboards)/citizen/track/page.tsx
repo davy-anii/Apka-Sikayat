@@ -116,14 +116,25 @@ function TrackComplaintContent() {
     try {
       const q = query(
         collection(db, "grievance_events"),
-        where("grievance_id", "==", id),
-        orderBy("timestamp", "desc")
+        where("grievance_id", "==", id)
       );
       const querySnapshot = await getDocs(q);
       const events = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as any[];
+
+      // Sort client-side DESC by timestamp
+      events.sort((a, b) => {
+        const timeA = a.timestamp?.seconds 
+          ? (a.timestamp.seconds * 1000 + (a.timestamp.nanoseconds || 0) / 1000000) 
+          : new Date(a.timestamp).getTime();
+        const timeB = b.timestamp?.seconds 
+          ? (b.timestamp.seconds * 1000 + (b.timestamp.nanoseconds || 0) / 1000000) 
+          : new Date(b.timestamp).getTime();
+        return timeB - timeA;
+      });
+
       setTimelineEvents(events);
     } catch (error) {
       console.error("Error fetching grievance events:", error);
@@ -410,10 +421,16 @@ function TrackComplaintContent() {
                           <p className="text-sm text-gray-600">{evt.message}</p>
                         </div>
                         <span className="text-[11px] text-gray-400 font-medium text-right shrink-0 mt-0.5">
-                          {new Date(evt.timestamp).toLocaleString('en-IN', {
-                            day: '2-digit', month: 'short', year: 'numeric',
-                            hour: '2-digit', minute: '2-digit'
-                          })}
+                          {(() => {
+                            if (!evt.timestamp) return 'N/A';
+                            const dateObj = evt.timestamp.seconds !== undefined 
+                              ? new Date(evt.timestamp.seconds * 1000 + (evt.timestamp.nanoseconds || 0) / 1000000)
+                              : (evt.timestamp.toDate ? evt.timestamp.toDate() : new Date(evt.timestamp));
+                            return isNaN(dateObj.getTime()) ? 'N/A' : dateObj.toLocaleString('en-IN', {
+                              day: '2-digit', month: 'short', year: 'numeric',
+                              hour: '2-digit', minute: '2-digit'
+                            });
+                          })()}
                         </span>
                       </div>
                     ))}

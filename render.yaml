@@ -1,0 +1,78 @@
+services:
+  # Next.js Frontend
+  - type: web
+    name: apka-sikayat-frontend
+    env: node
+    plan: starter
+    buildCommand: npm install --prefix frontend && npm run build:frontend
+    startCommand: npm run start:frontend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        fromGroup: firebase-creds
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        fromGroup: firebase-creds
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        fromGroup: firebase-creds
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        fromGroup: firebase-creds
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        fromGroup: firebase-creds
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        fromGroup: firebase-creds
+      - key: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+        fromGroup: firebase-creds
+
+  # Node.js/Express Backend & Real-Time Socket Gateway
+  - type: web
+    name: apka-sikayat-backend
+    env: node
+    plan: starter
+    buildCommand: npm install --prefix backend && npm run build:backend
+    startCommand: npm run start:backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5002
+      - key: TWILIO_ACCOUNT_SID
+        fromGroup: twilio-creds
+      - key: TWILIO_AUTH_TOKEN
+        fromGroup: twilio-creds
+      - key: TWILIO_PHONE_NUMBER
+        fromGroup: twilio-creds
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        sync: false
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: PGHOST
+        sync: false
+      - key: PGPORT
+        sync: false
+      - key: PGUSER
+        sync: false
+      - key: PGDATABASE
+        sync: false
+      - key: PGPASSWORD
+        sync: false
+
+envVarGroups:
+  - name: firebase-creds
+    envVars:
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+      - key: NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  - name: twilio-creds
+    envVars:
+      - key: TWILIO_ACCOUNT_SID
+      - key: TWILIO_AUTH_TOKEN
+      - key: TWILIO_PHONE_NUMBER

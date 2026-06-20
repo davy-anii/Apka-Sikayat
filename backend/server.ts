@@ -6,13 +6,17 @@ import dotenv from 'dotenv';
 import path from 'path';
 import twilio from 'twilio';
 
+import { createAdapter } from '@socket.io/redis-adapter';
+import IORedis from 'ioredis';
+
 // Import Services
 import { updateComplaintStatusInDb } from './services/eventService';
 import { initQueueService } from './services/queueService'; // Legacy dashboard fallback
-import { initDatabase, logSMS, updateSMSStatus, getSMSLogs, getSMSStats } from './services/databaseService';
+import { initDatabase, logSMS, updateSMSStatus, getSMSLogs, getSMSStats, isPostgresConnected, closeDatabase } from './services/databaseService';
 import { initRateLimiter, checkRateLimit } from './services/rateLimiter';
-import { initSMSQueue, getSMSQueue } from './services/bullmqService';
+import { initSMSQueue, getSMSQueue, isRedisConnected, closeRedis } from './services/bullmqService';
 import { maskPhoneNumber } from './services/cryptoService';
+import { isFirebaseAdminInitialized, adminDb } from './firebaseAdmin';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../frontend/.env') });
@@ -20,17 +24,39 @@ dotenv.config({ path: path.join(__dirname, '../frontend/.env') });
 const app = express();
 const server = http.createServer(app);
 
-// Configure CORS
+// Dynamic CORS configurations
+const allowedOrigins = ['http://localhost:5001', 'http://127.0.0.1:5001', 'http://localhost:3000', 'http://127.0.0.1:3000'];
+if (process.env.NEXT_PUBLIC_APP_URL) {
+  allowedOrigins.push(process.env.NEXT_PUBLIC_APP_URL);
+}
+
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5001', 'http://127.0.0.1:5001'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
+// Configure Socket.IO Redis Adapter for horizontal scaling if Redis is configured
+if (process.env.REDIS_HOST) {
+  try {
+    const pubClient = new IORedis({
+      host: process.env.REDIS_HOST,
+      port: parseInt(process.env.REDIS_PORT || '6379', 10),
+      password: process.env.REDIS_PASSWORD || undefined,
+      connectTimeout: 2000
+    });
+    const subClient = pubClient.duplicate();
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('[Socket.IO] Redis adapter initialized successfully.');
+  } catch (err: any) {
+    console.warn('[Socket.IO] Failed to initialize Redis adapter, falling back to in-memory.', err.message);
+  }
+}
+
 app.use(cors({
-  origin: ['http://localhost:5001', 'http://127.0.0.1:5001'],
+  origin: allowedOrigins,
   credentials: true
 }));
 
@@ -54,6 +80,14 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('track_complaint_by_token', (token: string) => {
+    if (token) {
+      socket.join(`token:${token}`);
+      console.log(`[Socket.IO] Joined room token:${token}`);
+      socket.emit('tracked_token', { token, status: 'listening' });
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log(`[Socket.IO] Client disconnected: ${socket.id}`);
   });
@@ -62,7 +96,7 @@ io.on('connection', (socket) => {
 // 1. API: Update Complaint Status (Used by Officers/AI)
 app.post('/api/complaints/:id/status', async (req, res) => {
   const { id } = req.params;
-  const { status, notes, updatedBy, phoneNumber: reqPhoneNumber, citizenId: reqCitizenId } = req.body;
+  const { status, notes, updatedBy, phoneNumber: reqPhoneNumber, citizenId: reqCitizenId, trackingToken: reqTrackingToken, trackingLink: reqTrackingLink } = req.body;
 
   if (!status || !updatedBy) {
     return res.status(400).json({ error: 'Status and updatedBy fields are required.' });
@@ -102,7 +136,9 @@ app.post('/api/complaints/:id/status', async (req, res) => {
         template: status, // status mapped to template key
         citizenId: citizenId,
         category: complaintData.category || 'General',
-        department: complaintData.department || 'General Department'
+        department: complaintData.department || 'General Department',
+        trackingToken: reqTrackingToken || complaintData.trackingToken,
+        trackingLink: reqTrackingLink || complaintData.trackingLink
       });
     }
 
@@ -207,7 +243,7 @@ app.get('/api/admin/sms-logs', async (req, res) => {
 
 // 4. Internal Endpoint: Trigger Real-time broadcast (Called by worker)
 app.post('/api/internal/broadcast', (req, res) => {
-  const { complaintId, status, currentStep, timeline, notes } = req.body;
+  const { complaintId, status, currentStep, timeline, notes, trackingToken } = req.body;
 
   if (!complaintId || !status) {
     return res.status(400).json({ error: 'complaintId and status are required for broadcast.' });
@@ -215,7 +251,7 @@ app.post('/api/internal/broadcast', (req, res) => {
 
   console.log(`[API Server] Broadcasting status update for ${complaintId} via Socket.IO`);
   
-  // Emit event to room
+  // Emit event to complaint room
   io.to(`complaint:${complaintId}`).emit('status_update', {
     complaintId,
     status,
@@ -225,7 +261,105 @@ app.post('/api/internal/broadcast', (req, res) => {
     timestamp: new Date().toISOString()
   });
 
+  // Emit event to token room
+  if (trackingToken) {
+    console.log(`[API Server] Broadcasting status update to token room: token:${trackingToken}`);
+    io.to(`token:${trackingToken}`).emit('status_update', {
+      complaintId,
+      status,
+      currentStep,
+      timeline,
+      notes,
+      timestamp: new Date().toISOString()
+    });
+  }
+
   return res.status(200).json({ success: true, message: 'Broadcast complete.' });
+});
+
+const trackIpLimits = new Map<string, { count: number; resetTime: number }>();
+
+function publicTrackRateLimiter(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const ip = req.ip || req.headers['x-forwarded-for'] as string || 'unknown';
+  const now = Date.now();
+  const windowMs = 60 * 1000; // 1 minute window
+  const maxRequests = 30; // Max 30 requests per minute
+
+  const limitData = trackIpLimits.get(ip);
+  if (!limitData || now > limitData.resetTime) {
+    trackIpLimits.set(ip, {
+      count: 1,
+      resetTime: now + windowMs
+    });
+    return next();
+  }
+
+  limitData.count++;
+  if (limitData.count > maxRequests) {
+    console.warn(`[Rate Limiter] [IP BLOCKED] Public tracking rate limit exceeded for IP: ${ip}`);
+    return res.status(429).json({ error: 'Too many requests. Please try again after 1 minute.' });
+  }
+
+  next();
+}
+
+// 5. Public API: Fetch Complaint by Tracking Token (No Authentication Required)
+app.get('/api/complaints/track/:token', publicTrackRateLimiter, async (req, res) => {
+  const { token } = req.params;
+
+  if (!token) {
+    return res.status(400).json({ error: 'Tracking token is required.' });
+  }
+
+  try {
+    if (isFirebaseAdminInitialized && adminDb) {
+      const complaintsRef = adminDb.collection('complaints');
+      const snapshot = await complaintsRef.where('trackingToken', '==', token).limit(1).get();
+
+      if (snapshot.empty) {
+        // Fallback: Check if they passed a complaint ID directly (e.g. for backward compatibility)
+        const directDoc = await complaintsRef.doc(token).get();
+        if (directDoc.exists) {
+          return res.status(200).json(directDoc.data());
+        }
+        return res.status(404).json({ error: 'No complaint found matching this tracking token.' });
+      }
+
+      const doc = snapshot.docs[0];
+      return res.status(200).json(doc.data());
+    } else {
+      // Simulation mode fallback
+      return res.status(200).json({
+        id: "CMP-2026-001",
+        title: "Simulation Complaint",
+        category: "Water Supply",
+        description: "Waterlogging near sector 5",
+        status: "Submitted",
+        department: "PWD",
+        assignedOfficer: "A. K. Sharma",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        currentStep: 1,
+        timeline: []
+      });
+    }
+  } catch (error: any) {
+    console.error(`[API Server] Error fetching tracking data for token ${token}:`, error.message);
+    return res.status(500).json({ error: error.message || 'An error occurred.' });
+  }
+});
+
+// 6. Diagnostics Endpoint: Health check for Render deployments
+app.get('/health', (req, res) => {
+  const dbStatus = isPostgresConnected() ? 'connected' : 'disconnected';
+  const redisStatus = isRedisConnected() ? 'connected' : 'disconnected';
+
+  return res.status(200).json({
+    status: "healthy",
+    database: dbStatus,
+    redis: redisStatus,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Start Web Server
@@ -247,3 +381,33 @@ server.listen(PORT, async () => {
     legacyQueue.processJobs(processNotificationJob);
   }
 });
+
+// Graceful Shutdown implementation for production environments (Render)
+async function gracefulShutdown(signal: string) {
+  console.log(`\n[API Server] Received ${signal}. Starting graceful shutdown procedure...`);
+  
+  // 1. Close Server to stop receiving new requests
+  server.close(() => {
+    console.log('[API Server] HTTP server closed.');
+  });
+
+  // 2. Shut down PG connection pool
+  try {
+    await closeDatabase();
+  } catch (err: any) {
+    console.error('[API Server] Error closing database pool:', err.message);
+  }
+
+  // 3. Close BullMQ queue and client connections
+  try {
+    await closeRedis();
+  } catch (err: any) {
+    console.error('[API Server] Error disconnecting from Redis:', err.message);
+  }
+
+  console.log('[API Server] Graceful shutdown completed. Exiting.');
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

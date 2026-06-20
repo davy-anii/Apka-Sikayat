@@ -276,3 +276,16 @@ export async function getSMSStats(): Promise<any> {
 
   return stats;
 }
+
+export function isPostgresConnected(): boolean {
+  return usePostgres && pgPool !== null;
+}
+
+export async function closeDatabase(): Promise<void> {
+  if (pgPool) {
+    console.log('[Database Service] Closing PostgreSQL connection pool...');
+    await pgPool.end();
+    pgPool = null;
+    usePostgres = false;
+  }
+}

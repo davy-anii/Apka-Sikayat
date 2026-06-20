@@ -13,7 +13,6 @@ import {
   Brain, Loader2, CheckCircle2, AlertTriangle
 } from 'lucide-react';
 import { complaintSchema, ComplaintFormValues, CATEGORIES, DISTRICTS } from '@/lib/validations/complaint';
-import * as firebaseModule from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
@@ -22,8 +21,6 @@ import { doc, setDoc } from 'firebase/firestore';
 const LocationPicker = dynamic(() => import('@/components/maps/LocationPicker'), { ssr: false });
 
 export default function SubmitComplaintPage() {
-  console.log("[Submit Page] Imported firebaseModule:", firebaseModule);
-  console.log("[Submit Page] db is:", db);
   const { user, profile } = useAuth();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -144,8 +141,17 @@ export default function SubmitComplaintPage() {
 
     setIsSubmitting(true);
     try {
-      const randomId = Math.floor(1000 + Math.random() * 9000);
-      const complaintId = `CMP-${randomId}`;
+      // Generate a unique, timestamp-based complaint ID that cannot collide with mock data
+      const now = new Date();
+      const datePart = now.toISOString().slice(0, 10).replace(/-/g, ''); // e.g. 20260620
+      const randPart = Math.floor(1000 + Math.random() * 9000);          // e.g. 4732
+      const complaintId = `CMP-${datePart}-${randPart}`;                 // e.g. CMP-20260620-4732
+
+      // Generate tracking token and link
+      const { generateTrackingToken, getAppUrl } = require('@/lib/urlHelper');
+      const trackingToken = generateTrackingToken();
+      const appUrl = getAppUrl();
+      const trackingLink = `${appUrl}/track/${trackingToken}`;
 
       const docRef = doc(db, "complaints", complaintId);
 
@@ -176,7 +182,9 @@ export default function SubmitComplaintPage() {
           { step: 6, title: "Closed", date: null, desc: "Complaint officially closed.", iconName: "Lock" },
         ],
         currentStep: 1,
-        aiValidation: aiAnalysisResult || null
+        aiValidation: aiAnalysisResult || null,
+        trackingToken,
+        trackingLink
       };
 
       await setDoc(docRef, newComplaint);
@@ -193,7 +201,9 @@ export default function SubmitComplaintPage() {
             notes: 'Dear Citizen, Your grievance has been successfully submitted and is under AI validation.',
             updatedBy: 'Citizen',
             phoneNumber: profile?.phone || '',
-            citizenId: user?.uid || ''
+            citizenId: user?.uid || '',
+            trackingToken,
+            trackingLink
           })
         });
       } catch (smsError) {
@@ -317,35 +327,68 @@ export default function SubmitComplaintPage() {
               <p className="text-xs text-gray-400 mt-1">or click to browse (Photos, Videos, Audio)</p>
             </div>
 
-            {/* AI Engine Status Banners */}
-            {isAnalyzing && (
-              <div className="mt-4 p-4 rounded-xl border border-[#87CEEB]/30 bg-[#87CEEB]/5 flex items-center justify-center space-x-3 text-[#1E3A8A] text-sm animate-pulse">
-                <Loader2 className="w-5 h-5 animate-spin text-[#FF9933]" />
-                <span className="font-medium">AI Intelligence Engine validating image...</span>
+            {/* AI Evidence Verification Status */}
+            {(isAnalyzing || aiError || aiAnalysisResult) && (
+              <div className={`mt-4 rounded-xl border overflow-hidden transition-all duration-300 ${
+                isAnalyzing
+                  ? 'border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50/40'
+                  : aiError
+                  ? 'border-red-100 bg-red-50/30'
+                  : 'border-emerald-100 bg-gradient-to-r from-emerald-50 to-teal-50/40'
+              }`}>
+                <div className="px-4 py-3 flex items-center gap-3">
+                  {/* Status Icon */}
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isAnalyzing ? 'bg-blue-100' : aiError ? 'bg-red-100' : 'bg-emerald-100'
+                  }`}>
+                    {isAnalyzing && <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />}
+                    {aiError && <AlertTriangle className="w-4 h-4 text-red-500" />}
+                    {aiAnalysisResult && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                  </div>
+
+                  {/* Label */}
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${
+                      isAnalyzing ? 'text-blue-500' : aiError ? 'text-red-500' : 'text-emerald-600'
+                    }`}>AI Evidence Screening</p>
+                    <p className={`text-sm font-medium leading-snug ${
+                      isAnalyzing ? 'text-blue-800' : aiError ? 'text-red-800' : 'text-emerald-900'
+                    }`}>
+                      {isAnalyzing && 'Analysing uploaded evidence…'}
+                      {aiError && 'Evidence does not represent a valid public grievance.'}
+                      {aiAnalysisResult && 'Evidence accepted. Ready to submit.'}
+                    </p>
+                  </div>
+
+                  {/* Status Pill */}
+                  <span className={`flex-shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide ${
+                    isAnalyzing ? 'bg-blue-100 text-blue-700'
+                    : aiError ? 'bg-red-100 text-red-700'
+                    : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {isAnalyzing ? 'Scanning' : aiError ? 'Rejected' : 'Verified'}
+                  </span>
+                </div>
+
+                {/* Bottom progress bar — only while scanning */}
+                {isAnalyzing && (
+                  <div className="h-0.5 bg-blue-100">
+                    <div className="h-full bg-blue-400 animate-pulse" style={{ width: '60%' }} />
+                  </div>
+                )}
               </div>
             )}
 
-            {aiError && (
-              <div className="mt-4 p-4 rounded-xl border border-red-100 bg-red-50/50 text-red-700 text-xs flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                <span className="font-semibold text-red-800">Evidence rejected. Please upload a valid image showing a public grievance.</span>
-              </div>
-            )}
-
-            {aiAnalysisResult && (
-              <div className="mt-4 p-4 rounded-xl border border-emerald-100 bg-emerald-50/50 text-emerald-800 text-xs flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span className="font-semibold text-emerald-950">Evidence verified and accepted.</span>
-              </div>
-            )}
-
-            {/* Display selected files */}
+            {/* Attached File List */}
             {files.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 space-y-1.5">
                 {files.map((file, i) => (
-                  <div key={i} className="flex items-center text-sm p-2 bg-gray-50 rounded-lg border border-gray-100">
-                    <File className="w-4 h-4 mr-2 text-[#FF9933]" />
-                    <span className="truncate flex-1 text-gray-600">{file.name}</span>
+                  <div key={i} className="flex items-center gap-2.5 px-3 py-2 bg-gray-50 rounded-lg border border-gray-100">
+                    <File className="w-3.5 h-3.5 text-[#FF9933] flex-shrink-0" />
+                    <span className="truncate flex-1 text-xs font-medium text-gray-600">{file.name}</span>
+                    <span className="flex-shrink-0 text-[10px] font-semibold text-gray-400 uppercase">
+                      {file.name.split('.').pop()}
+                    </span>
                   </div>
                 ))}
               </div>

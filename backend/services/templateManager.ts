@@ -1,41 +1,41 @@
 export const TEMPLATES: Record<string, string> = {
   // Submission
   'complaint-submitted': 
-    'Dear Citizen,\nYour grievance has been successfully submitted.\nComplaint ID: {{complaintId}}\nCategory: {{category}}\nStatus: Submitted\nThank you for using the CM Grievance Portal.',
+    'Dear Citizen,\n\nYour grievance has been successfully submitted.\n\nComplaint ID:\n{{complaintId}}\n\nCategory:\n{{category}}\n\nTrack your grievance:\n\n{{trackingUrl}}\n\nYou will receive updates whenever the complaint status changes.\n\nCM Grievance Portal',
   
   // Statuses
   'Submitted': 
-    'Dear Citizen,\nYour grievance has been successfully submitted.\nComplaint ID: {{complaintId}}\nCategory: {{category}}\nStatus: Submitted\nThank you for using the CM Grievance Portal.',
+    'Dear Citizen,\n\nYour grievance has been successfully submitted.\n\nComplaint ID:\n{{complaintId}}\n\nCategory:\n{{category}}\n\nTrack your grievance:\n\n{{trackingUrl}}\n\nYou will receive updates whenever the complaint status changes.\n\nCM Grievance Portal',
   
   'AI_Validated': 
-    'Dear Citizen,\nYour grievance {{complaintId}} has completed AI validation.\nStatus: AI Verified.\nThank you for using the CM Portal.',
+    'Dear Citizen,\n\nYour grievance {{complaintId}} has completed AI validation.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: AI Validation Completed\n\nCM Grievance Portal',
   
   'Assigned_Dept': 
-    'Dear Citizen,\nYour grievance {{complaintId}} has been assigned to {{department}}.',
+    'Dear Citizen,\n\nYour grievance {{complaintId}} has been assigned to {{department}}.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Assigned To Department\n\nCM Grievance Portal',
   
   'Officer_Assigned': 
-    'Dear Citizen,\nA resolving officer has been assigned to handle your grievance {{complaintId}}.',
+    'Dear Citizen,\n\nA resolving officer has been assigned to handle your grievance {{complaintId}}.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Officer Assigned\n\nCM Grievance Portal',
   
   'Investigation_Started': 
-    'Dear Citizen,\nInvestigation has started for grievance {{complaintId}}.',
+    'Dear Citizen,\n\nInvestigation has started for grievance {{complaintId}}.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Investigation Started\n\nCM Grievance Portal',
   
   'Inspection_Scheduled': 
-    'Dear Citizen,\nA field inspection has been scheduled for grievance {{complaintId}}.',
+    'Dear Citizen,\n\nA field inspection has been scheduled for grievance {{complaintId}}.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Field Inspection Scheduled\n\nCM Grievance Portal',
   
   'Inspection_Completed': 
-    'Dear Citizen,\nField inspection has been completed for grievance {{complaintId}}.',
+    'Dear Citizen,\n\nField inspection has been completed for grievance {{complaintId}}.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Field Inspection Completed\n\nCM Grievance Portal',
   
   'Action_In_Progress': 
-    'Dear Citizen,\nWork has started on grievance {{complaintId}}.',
+    'Dear Citizen,\n\nWork has started on grievance {{complaintId}}.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Action In Progress\n\nCM Grievance Portal',
   
   'Resolved': 
-    'Dear Citizen,\nYour grievance {{complaintId}} has been marked as resolved.',
+    'Dear Citizen,\n\nYour grievance {{complaintId}} has been marked as resolved.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Resolved\n\nCM Grievance Portal',
   
   'Citizen_Verified': 
-    'Dear Citizen,\nYou have successfully verified the resolution of grievance {{complaintId}}.',
+    'Dear Citizen,\n\nYou have successfully verified the resolution of grievance {{complaintId}}.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Citizen Verification\n\nCM Grievance Portal',
   
   'Closed': 
-    'Dear Citizen,\nYour grievance {{complaintId}} has been successfully closed.'
+    'Dear Citizen,\n\nYour grievance {{complaintId}} has been successfully closed.\n\nTrack your grievance:\n{{trackingUrl}}\n\nCurrent Status: Closed\n\nCM Grievance Portal'
 };
 
 /**

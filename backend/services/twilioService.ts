@@ -47,14 +47,37 @@ export async function sendTwilioSMS(to: string, body: string): Promise<TwilioSen
 
   try {
     const formattedTo = to.startsWith('+') ? to : `+${to}`;
-    const formattedFrom = PHONE_NUMBER.startsWith('+') ? PHONE_NUMBER : `+${PHONE_NUMBER}`;
+    const fromNumber = PHONE_NUMBER || '';
+    const formattedFrom = fromNumber.startsWith('+') ? fromNumber : `+${fromNumber}`;
 
-    const response = await twilioClient.messages.create({
+    let statusCallback = CALLBACK_URL;
+    if (statusCallback) {
+      const isLocal = statusCallback.includes('localhost') || statusCallback.includes('127.0.0.1');
+      if (isLocal) {
+        const ngrokUrl = process.env.NGROK_PUBLIC_URL || process.env.NEXT_PUBLIC_NGROK_PUBLIC_URL;
+        if (ngrokUrl) {
+          statusCallback = statusCallback
+            .replace(/http:\/\/localhost:\d+/, ngrokUrl)
+            .replace(/http:\/\/127.0.0.1:\d+/, ngrokUrl);
+          console.log(`[Twilio Service] Replaced local callback with ngrok callback: ${statusCallback}`);
+        } else {
+          console.log(`[Twilio Service] Omitted local statusCallback since no public NGROK_PUBLIC_URL is configured.`);
+          statusCallback = undefined;
+        }
+      }
+    }
+
+    const msgConfig: any = {
       body: body,
       from: formattedFrom,
-      to: formattedTo,
-      statusCallback: CALLBACK_URL
-    });
+      to: formattedTo
+    };
+
+    if (statusCallback) {
+      msgConfig.statusCallback = statusCallback;
+    }
+
+    const response = await twilioClient.messages.create(msgConfig);
 
     console.log(`[Twilio Service] Twilio API success. Message SID: ${response.sid}, Status: ${response.status}`);
 

@@ -10,6 +10,7 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@socket.io/redis-adapter": "^8.3.0",
     "bull": "^4.16.5",
     "bullmq": "^5.79.0",
     "cors": "^2.8.5",

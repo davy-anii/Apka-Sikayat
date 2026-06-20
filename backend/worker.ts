@@ -128,6 +128,7 @@ export async function processNotificationJob(jobData: NotificationJobData): Prom
       // Fetch latest complaint status and timeline from database to broadcast
       let currentStep = 1;
       let timeline: any[] = [];
+      let trackingToken: string | null = null;
       
       if (isFirebaseAdminInitialized && adminDb) {
         const docSnap = await adminDb.collection('complaints').doc(complaintId).get();
@@ -135,6 +136,7 @@ export async function processNotificationJob(jobData: NotificationJobData): Prom
           const data = docSnap.data();
           currentStep = data?.currentStep || 1;
           timeline = data?.timeline || [];
+          trackingToken = data?.trackingToken || null;
         }
       } else {
         // Fallback for simulation/in-memory
@@ -165,7 +167,8 @@ export async function processNotificationJob(jobData: NotificationJobData): Prom
           status,
           currentStep,
           timeline,
-          notes
+          notes,
+          trackingToken
         })
       });
 

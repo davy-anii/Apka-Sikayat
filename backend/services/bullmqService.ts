@@ -7,6 +7,7 @@ import { logSMS, updateSMSStatus, SMSLogData } from './databaseService';
 import { renderTemplate } from './templateManager';
 import { checkRateLimit } from './rateLimiter';
 import { isFirebaseAdminInitialized, adminDb } from '../firebaseAdmin';
+import { getBackendAppUrl } from './urlHelper';
 
 dotenv.config({ path: path.join(__dirname, '../../frontend/.env') });
 
@@ -27,6 +28,8 @@ export interface SMSJobPayload {
   citizenId: string;
   category: string;
   department?: string;
+  trackingToken?: string;
+  trackingLink?: string;
 }
 
 // Unified Queue interface
@@ -41,10 +44,14 @@ class InMemorySMSQueue implements ISMSQueue {
 
   async addSMSJob(payload: SMSJobPayload): Promise<void> {
     const jobLogId = `sms_${Math.floor(100000 + Math.random() * 900000)}`;
+    const appUrl = getBackendAppUrl();
+    const trackingUrl = payload.trackingLink || (payload.trackingToken ? `${appUrl}/track/${payload.trackingToken}` : `${appUrl}/track/${payload.complaintId}`);
+
     const messageText = renderTemplate(payload.template, {
       complaintId: payload.complaintId,
       category: payload.category,
-      department: payload.department || 'General Department'
+      department: payload.department || 'General Department',
+      trackingUrl: trackingUrl
     });
 
     console.log(`[BullMQ Fallback] Creating Log: ${jobLogId} with status 'Queued'`);
@@ -75,10 +82,14 @@ class InMemorySMSQueue implements ISMSQueue {
       }
 
       const { payload, attempts } = job;
+      const appUrl = getBackendAppUrl();
+      const trackingUrl = payload.trackingLink || (payload.trackingToken ? `${appUrl}/track/${payload.trackingToken}` : `${appUrl}/track/${payload.complaintId}`);
+
       const messageText = renderTemplate(payload.template, {
         complaintId: payload.complaintId,
         category: payload.category,
-        department: payload.department || 'General Department'
+        department: payload.department || 'General Department',
+        trackingUrl: trackingUrl
       });
 
       console.log(`[BullMQ Fallback] Dequeued SMS Job. Attempt ${attempts}/4...`);
@@ -143,10 +154,14 @@ class RedisSMSQueue implements ISMSQueue {
     if (!smsQueue) throw new Error('BullMQ SMS Queue not initialized.');
 
     const jobLogId = `sms_${Math.floor(100000 + Math.random() * 900000)}`;
+    const appUrl = getBackendAppUrl();
+    const trackingUrl = payload.trackingLink || (payload.trackingToken ? `${appUrl}/track/${payload.trackingToken}` : `${appUrl}/track/${payload.complaintId}`);
+
     const messageText = renderTemplate(payload.template, {
       complaintId: payload.complaintId,
       category: payload.category,
-      department: payload.department || 'General Department'
+      department: payload.department || 'General Department',
+      trackingUrl: trackingUrl
     });
 
     // 1. Save Log entry immediately with status 'Queued'
@@ -310,4 +325,33 @@ export function getSMSQueue(): ISMSQueue {
     activeSMSQueue = new InMemorySMSQueue();
   }
   return activeSMSQueue;
+}
+
+export function isRedisConnected(): boolean {
+  return useRedisQueue;
+}
+
+export async function closeRedis(): Promise<void> {
+  if (redisConnection) {
+    console.log('[BullMQ Service] Disconnecting from Redis...');
+    try {
+      await redisConnection.quit();
+    } catch (e) {
+      // Ignored if already closed
+    }
+    redisConnection = null;
+    useRedisQueue = false;
+  }
+  if (smsQueue) {
+    try {
+      await smsQueue.close();
+    } catch (e) {}
+    smsQueue = null;
+  }
+  if (smsWorker) {
+    try {
+      await smsWorker.close();
+    } catch (e) {}
+    smsWorker = null;
+  }
 }
