@@ -37,6 +37,13 @@ export function getBackendUrl(): string {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'http://localhost:5002';
     }
+    // Auto-detect Render backend URL mapping
+    if (window.location.hostname.endsWith('.onrender.com')) {
+      const baseName = window.location.hostname
+        .replace('-frontend', '')
+        .replace('.onrender.com', '');
+      return `https://${baseName}-backend.onrender.com`;
+    }
     // Handle dynamic ngrok URLs mapping 5001/3000 to 5002
     return window.location.origin.replace(':5001', ':5002').replace(':3000', ':5002');
   }

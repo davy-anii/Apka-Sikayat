@@ -46,7 +46,19 @@ export async function sendTwilioSMS(to: string, body: string): Promise<TwilioSen
   }
 
   try {
-    const formattedTo = to.startsWith('+') ? to : `+${to}`;
+    let formattedTo = to.trim().replace(/[\s\-\(\)]/g, '');
+    if (!formattedTo.startsWith('+')) {
+      if (formattedTo.startsWith('0')) {
+        formattedTo = formattedTo.substring(1);
+      }
+      if (formattedTo.length === 10) {
+        formattedTo = `+91${formattedTo}`;
+      } else if (formattedTo.length === 12 && formattedTo.startsWith('91')) {
+        formattedTo = `+${formattedTo}`;
+      } else {
+        formattedTo = `+${formattedTo}`;
+      }
+    }
     const fromNumber = PHONE_NUMBER || '';
     const formattedFrom = fromNumber.startsWith('+') ? fromNumber : `+${fromNumber}`;
 
