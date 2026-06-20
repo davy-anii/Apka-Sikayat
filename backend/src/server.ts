@@ -18,6 +18,7 @@ import { initSMSQueue, getSMSQueue, isRedisConnected, closeRedis } from './servi
 import { maskPhoneNumber } from './services/cryptoService';
 import { isFirebaseAdminInitialized, adminDb } from './config/firebaseAdmin';
 import { validateGrievance } from './services/grievanceValidator';
+import { runEscalationCycle } from './services/escalationService';
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../frontend/.env') });
@@ -242,6 +243,22 @@ app.get('/api/admin/sms-logs', async (req, res) => {
   }
 });
 
+// Admin Route: Manual/Triggered Escalation Check Cycle
+app.post('/api/admin/trigger-escalations', async (req, res) => {
+  try {
+    const stats = await runEscalationCycle();
+    return res.status(200).json({
+      success: true,
+      message: 'Escalation cycle run successfully.',
+      ...stats
+    });
+  } catch (error: any) {
+    console.error('[API Server] Escalation cycle failed:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+
 // 4. Internal Endpoint: Trigger Real-time broadcast (Called by worker)
 app.post('/api/internal/broadcast', (req, res) => {
   const { complaintId, status, currentStep, timeline, notes, trackingToken } = req.body;
@@ -388,6 +405,22 @@ server.listen(PORT, async () => {
   await initDatabase();
   await initRateLimiter();
   await initSMSQueue();
+
+  // Run initial escalation check
+  try {
+    await runEscalationCycle();
+  } catch (err: any) {
+    console.error('[API Server] Initial escalation check failed:', err.message);
+  }
+
+  // Schedule periodic escalation checks (every 10 minutes)
+  setInterval(async () => {
+    try {
+      await runEscalationCycle();
+    } catch (err: any) {
+      console.error('[API Server] Periodic escalation check failed:', err.message);
+    }
+  }, 10 * 60 * 1000);
 
   // Legacy background worker processing inline (in-memory mode)
   if (process.env.NODE_ENV !== 'production' || !process.env.REDIS_HOST) {

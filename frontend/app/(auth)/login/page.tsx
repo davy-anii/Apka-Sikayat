@@ -18,6 +18,9 @@ const DEMO_ACCOUNTS = [
   { role: 'Officer', email: 'officer@demo.com' },
   { role: 'Dept Head', email: 'dept@demo.com' },
   { role: 'CM Office', email: 'cm@demo.com' },
+  { role: 'District Mgr', email: 'district@demo.com' },
+  { role: 'State Admin', email: 'stateadmin@demo.com' },
+  { role: 'Super Admin', email: 'superadmin@demo.com' },
 ];
 
 export default function LoginPage() {
@@ -51,6 +54,12 @@ export default function LoginPage() {
           role = 'Dept Head';
         } else if (data.email === 'cm@demo.com') {
           role = 'CM Office';
+        } else if (data.email === 'district@demo.com') {
+          role = 'District Manager';
+        } else if (data.email === 'stateadmin@demo.com') {
+          role = 'State Administrator';
+        } else if (data.email === 'superadmin@demo.com') {
+          role = 'Super Admin';
         }
       }
       
@@ -58,10 +67,16 @@ export default function LoginPage() {
         router.push('/citizen');
       } else if (role === 'Officer') {
         router.push('/officer');
-      } else if (role === 'Dept Head') {
+      } else if (role === 'Dept Head' || role === 'Department Head') {
         router.push('/department');
-      } else if (role === 'CM Office') {
+      } else if (role === 'CM Office' || role === 'Chief Minister') {
         router.push('/cm');
+      } else if (role === 'District Manager') {
+        router.push('/district');
+      } else if (role === 'State Administrator') {
+        router.push('/state-admin');
+      } else if (role === 'Super Admin') {
+        router.push('/super-admin');
       } else {
         router.push('/citizen');
       }

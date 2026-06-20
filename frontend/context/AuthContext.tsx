@@ -82,6 +82,39 @@ const getDemoProfileData = (email: string, uid: string): UserProfile => {
       role: "CM Office",
       joinedDate: defaultJoined
     };
+  } else if (email === "district@demo.com") {
+    return {
+      uid,
+      fullName: "District Manager Verma",
+      email,
+      phone: "+91 9876543214",
+      district: "South West Delhi",
+      address: "South West District Collectorate",
+      role: "District Manager",
+      joinedDate: defaultJoined
+    };
+  } else if (email === "stateadmin@demo.com") {
+    return {
+      uid,
+      fullName: "State Admin Saxena",
+      email,
+      phone: "+91 9876543215",
+      district: "Delhi NCR",
+      address: "Delhi Secretariat",
+      role: "State Administrator",
+      joinedDate: defaultJoined
+    };
+  } else if (email === "superadmin@demo.com") {
+    return {
+      uid,
+      fullName: "Super Admin Administrator",
+      email,
+      phone: "+91 9876543216",
+      district: "Delhi NCR",
+      address: "Central Data Command",
+      role: "Super Admin",
+      joinedDate: defaultJoined
+    };
   }
   
   // Fallback default citizen
@@ -135,7 +168,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return userCredential.user;
     } catch (error: any) {
       // Check if it is a demo account. If so, automatically register the demo user in Firebase Auth.
-      const isDemo = ["citizen@demo.com", "officer@demo.com", "dept@demo.com", "cm@demo.com"].includes(email);
+      const isDemo = [
+        "citizen@demo.com", 
+        "officer@demo.com", 
+        "dept@demo.com", 
+        "cm@demo.com",
+        "district@demo.com",
+        "stateadmin@demo.com",
+        "superadmin@demo.com"
+      ].includes(email);
       if (isDemo && (error.code === "auth/user-not-found" || error.code === "auth/invalid-credential" || error.code === "auth/invalid-email")) {
         console.log(`Demo account ${email} not found. Automatically provisioning account...`);
         // Use password123 as a default password for demo accounts

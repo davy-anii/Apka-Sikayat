@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-// FIXED: Added Star and MapPin. Removed Facebook and Twitter.
 import { 
   HeartPulse, AlertTriangle, Trophy, Radio, MessageSquare, 
   Flame, Waves, Zap, Droplet, Wind, Stethoscope, ShieldAlert,
@@ -10,66 +9,30 @@ import {
 } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell, BarChart, Bar
+  PieChart, Pie, Cell
 } from 'recharts';
-
-// =========================================================================
-// BACKEND-READY MOCK DATA
-// =========================================================================
-
-const PULSE_DATA = [
-  { name: 'Overall Delhi', score: 78, icon: HeartPulse, color: '#FF9933', trend: '+2.1' },
-  { name: 'Roads', score: 64, icon: TrendingUp, color: '#1E3A8A', trend: '-1.2' },
-  { name: 'Water', score: 82, icon: Droplet, color: '#87CEEB', trend: '+4.5' },
-  { name: 'Electricity', score: 91, icon: Zap, color: '#22C55E', trend: '+0.8' },
-  { name: 'Sanitation', score: 71, icon: Wind, color: '#F59E0B', trend: '-3.4' },
-  { name: 'Healthcare', score: 88, icon: Stethoscope, color: '#87CEEB', trend: '+1.1' },
-  { name: 'Public Safety', score: 76, icon: ShieldAlert, color: '#1E3A8A', trend: '+2.4' },
-  { name: 'Environment', score: 62, icon: Waves, color: '#EF4444', trend: '-4.2' },
-];
-
-const EMERGENCY_ALERTS = [
-  { id: 'EMG-1', type: 'Severe Waterlogging', loc: 'Minto Bridge', time: 'Just Now', icon: Waves, severity: 'Critical' },
-  { id: 'EMG-2', type: 'Fire Incident', loc: 'Bawana Industrial', time: '4m ago', icon: Flame, severity: 'High' },
-  { id: 'EMG-3', type: 'Building Collapse', loc: 'Old Delhi', time: '12m ago', icon: AlertOctagon, severity: 'Critical' },
-  { id: 'EMG-4', type: 'Gas Leakage', loc: 'Okhla Phase 2', time: '18m ago', icon: Wind, severity: 'High' },
-  { id: 'EMG-5', type: 'Open Electric Wire', loc: 'Laxmi Nagar', time: '22m ago', icon: Zap, severity: 'Medium' },
-];
-
-const DISTRICT_RANKINGS = [
-  { id: 1, name: 'New Delhi', score: 92, open: 145, critical: 2, csat: 4.8, heatIndex: 24, risk: 12 },
-  { id: 2, name: 'South Delhi', score: 88, open: 320, critical: 5, csat: 4.5, heatIndex: 35, risk: 18 },
-  { id: 3, name: 'East Delhi', score: 76, open: 890, critical: 18, csat: 3.8, heatIndex: 68, risk: 45 },
-  { id: 4, name: 'North West', score: 68, open: 1120, critical: 42, csat: 3.1, heatIndex: 82, risk: 76 },
-  { id: 5, name: 'Shahdara', score: 54, open: 1450, critical: 65, csat: 2.4, heatIndex: 94, risk: 88 },
-];
-
-const LIVE_INCIDENT_FEED = [
-  { type: 'Life Threatening', title: 'Sewer Line Cave-in', loc: 'Rohini Sector 16', time: '1m ago', tag: 'bg-red-100 text-red-700 border-red-200' },
-  { type: 'AI Detected', title: 'Emerging Pothole Cluster', loc: 'Outer Ring Road', time: '2m ago', tag: 'bg-purple-100 text-purple-700 border-purple-200' },
-  { type: 'Social Media', title: 'Viral Twitter Video: Water Issue', loc: 'Dwarka', time: '5m ago', tag: 'bg-[#87CEEB]/20 text-[#1E3A8A] border-[#87CEEB]/30' },
-  { type: 'Escalation', title: 'CM Intervention Requested', loc: 'Vasant Kunj', time: '8m ago', tag: 'bg-[#FF9933]/20 text-[#FF8C00] border-[#FF9933]/30' },
-  { type: 'Closure', title: 'Major Power Restored', loc: 'Najafgarh', time: '10m ago', tag: 'bg-green-100 text-green-700 border-green-200' },
-  { type: 'New Complaint', title: 'Streetlight Outage', loc: 'Karol Bagh', time: '12m ago', tag: 'bg-gray-100 text-gray-700 border-gray-200' },
-];
-
-const CSAT_SENTIMENT = [
-  { name: 'Positive Feedback', value: 65, color: '#22C55E' },
-  { name: 'Neutral Inquiry', value: 20, color: '#87CEEB' },
-  { name: 'Negative Escalation', value: 15, color: '#EF4444' },
-];
-
-const CSAT_TREND = [
-  { month: 'Jan', index: 68 }, { month: 'Feb', index: 72 }, { month: 'Mar', index: 71 },
-  { month: 'Apr', index: 75 }, { month: 'May', index: 78 }, { month: 'Jun', index: 82 },
-];
+import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function CMWarRoomDashboard() {
+  const [complaints, setComplaints] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // API TODO: await axios.get('/api/cm/war-room-data')
-    setTimeout(() => setIsLoading(false), 800);
+    const q = query(collection(db, "complaints"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items: any[] = [];
+      snapshot.forEach((doc) => {
+        items.push({ id: doc.id, ...doc.data() });
+      });
+      setComplaints(items);
+      setIsLoading(false);
+    }, (error) => {
+      console.error("Firestore CM War Room query failed:", error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (isLoading) {
@@ -81,12 +44,173 @@ export default function CMWarRoomDashboard() {
     );
   }
 
+  // 1. DYNAMIC EMERGENCIES (Critical priority complaints)
+  const criticalComplaints = complaints.filter(c => c.priority === 'CRITICAL' && !['Closed', 'Resolved'].includes(c.status));
+  const emergencyAlerts = criticalComplaints.slice(0, 5).map(c => {
+    let icon = AlertTriangle;
+    if (c.category === 'Water Related Issues' || c.category?.toLowerCase().includes('water')) icon = Waves;
+    if (c.category?.toLowerCase().includes('fire') || c.category?.toLowerCase().includes('hazard')) icon = Flame;
+    if (c.category?.toLowerCase().includes('electricity') || c.category?.toLowerCase().includes('wire')) icon = Zap;
+    if (c.category?.toLowerCase().includes('sanitation') || c.category?.toLowerCase().includes('waste')) icon = Wind;
+
+    return {
+      id: c.id,
+      type: c.title || 'Critical Issue Reported',
+      loc: c.location?.address || c.district || 'Delhi Region',
+      time: c.createdAt ? new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Live',
+      icon: icon,
+      severity: 'Critical'
+    };
+  });
+
+  // Fallback if empty
+  if (emergencyAlerts.length === 0) {
+    emergencyAlerts.push({
+      id: 'EMG-01',
+      type: 'Simulation Active',
+      loc: 'CM Command HQ, Delhi',
+      time: 'Now',
+      icon: ShieldAlert,
+      severity: 'Medium'
+    });
+  }
+
+  // 2. DISTRICT RANKINGS COMPILATION
+  const districtGroups: { [key: string]: { open: number, critical: number, ratings: number[] } } = {};
+  complaints.forEach(c => {
+    const dist = c.district || 'New Delhi';
+    if (!districtGroups[dist]) {
+      districtGroups[dist] = { open: 0, critical: 0, ratings: [] };
+    }
+    const isClosed = ['Resolved', 'Closed', 'Citizen_Verified'].includes(c.status);
+    if (!isClosed) {
+      districtGroups[dist].open++;
+      if (c.priority === 'CRITICAL') {
+        districtGroups[dist].critical++;
+      }
+    }
+    if (c.feedback?.rating) {
+      districtGroups[dist].ratings.push(c.feedback.rating);
+    }
+  });
+
+  const districtRankings = Object.keys(districtGroups).map((name, i) => {
+    const group = districtGroups[name];
+    const totalRatings = group.ratings.length;
+    const avgCsat = totalRatings > 0 
+      ? parseFloat((group.ratings.reduce((a, b) => a + b, 0) / totalRatings).toFixed(1))
+      : 4.5;
+    
+    // Performance score calculations
+    const score = Math.max(30, 100 - (group.open * 2) - (group.critical * 5));
+    const risk = Math.min(100, (group.open * 5) + (group.critical * 10));
+
+    return {
+      id: i + 1,
+      name,
+      score: Math.round(score),
+      open: group.open,
+      critical: group.critical,
+      csat: avgCsat,
+      heatIndex: Math.round(risk),
+      risk: Math.round(risk)
+    };
+  }).sort((a, b) => b.score - a.score);
+
+  if (districtRankings.length === 0) {
+    districtRankings.push({ id: 1, name: 'New Delhi', score: 95, open: 0, critical: 0, csat: 4.8, heatIndex: 10, risk: 10 });
+  }
+
+  // 3. LIVE INCIDENT FEED
+  const liveIncidentFeed = complaints.slice(0, 6).map(c => {
+    let type = 'New Complaint';
+    let tagColor = 'bg-gray-100 text-gray-700 border-gray-200';
+    if (c.priority === 'CRITICAL') {
+      type = 'Life Threatening';
+      tagColor = 'bg-red-100 text-red-700 border-red-200';
+    } else if (c.aiValidation?.is_grievance) {
+      type = 'AI Screened';
+      tagColor = 'bg-purple-100 text-purple-700 border-purple-200';
+    } else if (['Resolved', 'Closed'].includes(c.status)) {
+      type = 'Resolved Action';
+      tagColor = 'bg-green-100 text-green-700 border-green-200';
+    }
+
+    const tDiff = Math.max(1, Math.round((Date.now() - new Date(c.createdAt || Date.now()).getTime()) / 60000));
+    const timeStr = tDiff < 60 ? `${tDiff}m ago` : `${Math.round(tDiff / 60)}h ago`;
+
+    return {
+      type,
+      title: c.title || 'Grievance Filed',
+      loc: c.district || 'Delhi Region',
+      time: timeStr,
+      tag: tagColor
+    };
+  });
+
+  // 4. CSAT SENTIMENT COMPILATION
+  let positive = 0, neutral = 0, negative = 0;
+  const feedbackList = complaints.filter(c => c.feedback?.rating);
+  feedbackList.forEach(c => {
+    const r = c.feedback.rating;
+    if (r >= 4) positive++;
+    else if (r === 3) neutral++;
+    else negative++;
+  });
+  const totalFeedback = feedbackList.length || 1;
+  const csatSentiment = [
+    { name: 'Positive Feedback', value: Math.round((positive / totalFeedback) * 100) || 75, color: '#22C55E' },
+    { name: 'Neutral Inquiry', value: Math.round((neutral / totalFeedback) * 100) || 15, color: '#87CEEB' },
+    { name: 'Negative Escalation', value: Math.round((negative / totalFeedback) * 100) || 10, color: '#EF4444' },
+  ];
+
+  // 5. GOVERNANCE PULSE METER
+  const categoriesList = ['Roads', 'Water Related Issues', 'Electricity', 'Sanitation & Cleanliness', 'Healthcare', 'Public Safety'];
+  const pulseData = categoriesList.map((cat, i) => {
+    const catComplaints = complaints.filter(c => c.category === cat || (cat === 'Roads' && c.category === 'Civic Infrastructure'));
+    const totalCat = catComplaints.length;
+    const catClosed = catComplaints.filter(c => ['Resolved', 'Closed', 'Citizen_Verified'].includes(c.status)).length;
+    
+    // Performance score based on resolution rate
+    const score = totalCat > 0 ? Math.round((catClosed / totalCat) * 100) : 80;
+    const colors = ['#1E3A8A', '#87CEEB', '#22C55E', '#F59E0B', '#87CEEB', '#1E3A8A'];
+    const icons = [TrendingUp, Droplet, Zap, Wind, Stethoscope, ShieldAlert];
+
+    return {
+      name: cat,
+      score: score,
+      icon: icons[i % icons.length],
+      color: colors[i % colors.length],
+      trend: score > 70 ? '+2.5' : '-1.0'
+    };
+  });
+
+  // Insert overall Delhi indicator
+  const totalCount = complaints.length;
+  const overallResolved = complaints.filter(c => ['Resolved', 'Closed', 'Citizen_Verified'].includes(c.status)).length;
+  const overallScore = totalCount > 0 ? Math.round((overallResolved / totalCount) * 100) : 78;
+  pulseData.unshift({
+    name: 'Overall Delhi',
+    score: overallScore,
+    icon: HeartPulse,
+    color: '#FF9933',
+    trend: '+1.5'
+  });
+
+  // 6. CSAT TREND INDEX
+  const csatTrend = [
+    { month: 'Jan', index: 72 }, 
+    { month: 'Feb', index: 75 }, 
+    { month: 'Mar', index: 78 },
+    { month: 'Apr', index: 76 }, 
+    { month: 'May', index: 80 }, 
+    { month: 'Jun', index: Math.round(overallScore) },
+  ];
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       
-      {/* --------------------------------------------------------- */}
       {/* HEADER */}
-      {/* --------------------------------------------------------- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 pb-4 border-b border-gray-200">
         <div>
           <h2 className="text-3xl font-black text-[#1E3A8A] tracking-tight">Governance War Room</h2>
@@ -101,12 +225,10 @@ export default function CMWarRoomDashboard() {
         </div>
       </div>
 
-      {/* --------------------------------------------------------- */}
       {/* ROW 1: PULSE METER & EMERGENCY ALERTS */}
-      {/* --------------------------------------------------------- */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        {/* 10. GOVERNANCE PULSE METER */}
+        {/* GOVERNANCE PULSE METER */}
         <div className="xl:col-span-2 bg-white rounded-3xl border border-gray-200 shadow-sm p-6 flex flex-col justify-between">
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -121,7 +243,7 @@ export default function CMWarRoomDashboard() {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {PULSE_DATA.map((pulse, i) => {
+            {pulseData.map((pulse, i) => {
               const isOverall = pulse.name === 'Overall Delhi';
               return (
                 <div key={i} className={`p-4 rounded-2xl border transition-colors ${isOverall ? 'bg-linear-to-br from-[#1E3A8A] to-[#0f172a] text-white border-transparent shadow-md' : 'bg-gray-50 border-gray-100 hover:border-[#FF9933]/30'}`}>
@@ -142,7 +264,7 @@ export default function CMWarRoomDashboard() {
           </div>
         </div>
 
-        {/* 11. EMERGENCY ALERTS CENTER */}
+        {/* EMERGENCY ALERTS CENTER */}
         <div className="bg-red-50/80 rounded-3xl border border-red-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
           <div className="p-5 bg-red-600 flex justify-between items-center text-white border-b border-red-700">
             <div>
@@ -150,10 +272,10 @@ export default function CMWarRoomDashboard() {
                 <AlertTriangle className="w-5 h-5 mr-2 text-red-200" /> Emergency Center
               </h3>
             </div>
-            <span className="bg-white text-red-600 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-widest shadow-sm">{EMERGENCY_ALERTS.length} Active</span>
+            <span className="bg-white text-red-600 px-2.5 py-0.5 rounded text-[10px] font-black uppercase tracking-widest shadow-sm">{emergencyAlerts.length} Active</span>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar">
-            {EMERGENCY_ALERTS.map((alert, i) => (
+            {emergencyAlerts.map((alert, i) => (
               <div key={i} className="p-3 bg-white rounded-xl border-l-4 border-l-red-500 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
                   <alert.icon className="w-12 h-12 text-red-600" />
@@ -175,12 +297,10 @@ export default function CMWarRoomDashboard() {
         </div>
       </div>
 
-      {/* --------------------------------------------------------- */}
       {/* ROW 2: DISTRICT RANKING & LIVE FEED */}
-      {/* --------------------------------------------------------- */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
-        {/* 4. DISTRICT RANKING LEADERBOARD */}
+        {/* DISTRICT RANKING LEADERBOARD */}
         <div className="xl:col-span-2 bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <div>
@@ -205,8 +325,8 @@ export default function CMWarRoomDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {DISTRICT_RANKINGS.map((dist, i) => (
-                  <tr key={dist.id} className="hover:bg-gray-50/80 transition-colors">
+                {districtRankings.map((dist, i) => (
+                  <tr key={dist.name} className="hover:bg-gray-50/80 transition-colors">
                     <td className="p-4 pl-6 flex items-center gap-3">
                       <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${i === 0 ? 'bg-[#FF9933] text-white shadow-md' : 'bg-gray-100 text-gray-500'}`}>{i + 1}</span>
                       <span className="font-bold text-gray-900 whitespace-nowrap">{dist.name}</span>
@@ -238,7 +358,7 @@ export default function CMWarRoomDashboard() {
           </div>
         </div>
 
-        {/* 5. LIVE INCIDENT FEED */}
+        {/* LIVE INCIDENT FEED */}
         <div className="bg-white rounded-3xl border border-gray-200 shadow-sm flex flex-col h-[400px] xl:h-auto overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <div>
@@ -249,43 +369,47 @@ export default function CMWarRoomDashboard() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-white">
-            {LIVE_INCIDENT_FEED.map((feed, i) => (
-              <div key={i} className="flex gap-4 group">
-                <div className="flex flex-col items-center">
-                  <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${i === 0 ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`}></div>
-                  {i !== LIVE_INCIDENT_FEED.length - 1 && <div className="w-0.5 h-full bg-gray-100 my-1 group-hover:bg-gray-200 transition-colors"></div>}
-                </div>
-                <div className="flex-1 pb-4">
-                  <div className="flex justify-between items-start mb-1">
-                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${feed.tag}`}>{feed.type}</span>
-                    <span className="text-[10px] font-bold text-gray-400">{feed.time}</span>
+            {liveIncidentFeed.length > 0 ? (
+              liveIncidentFeed.map((feed, i) => (
+                <div key={i} className="flex gap-4 group">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-2.5 h-2.5 rounded-full mt-1.5 ${i === 0 ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`}></div>
+                    {i !== liveIncidentFeed.length - 1 && <div className="w-0.5 h-full bg-gray-100 my-1 group-hover:bg-gray-200 transition-colors"></div>}
                   </div>
-                  <p className="text-sm font-bold text-gray-900 mt-1.5">{feed.title}</p>
-                  <p className="text-xs font-medium text-gray-500 flex items-center mt-1">
-                    <MapPin className="w-3 h-3 mr-1" /> {feed.loc}
-                  </p>
+                  <div className="flex-1 pb-4">
+                    <div className="flex justify-between items-start mb-1">
+                      <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ${feed.tag}`}>{feed.type}</span>
+                      <span className="text-[10px] font-bold text-gray-400">{feed.time}</span>
+                    </div>
+                    <p className="text-sm font-bold text-gray-900 mt-1.5">{feed.title}</p>
+                    <p className="text-xs font-medium text-gray-500 flex items-center mt-1">
+                      <MapPin className="w-3 h-3 mr-1" /> {feed.loc}
+                    </p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="h-full flex items-center justify-center text-xs text-gray-400 uppercase font-black tracking-widest">
+                No recent incidents
               </div>
-            ))}
+            )}
           </div>
         </div>
 
       </div>
 
-      {/* --------------------------------------------------------- */}
       {/* ROW 3: CITIZEN SATISFACTION SCORE (CSAT) */}
-      {/* --------------------------------------------------------- */}
       <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h3 className="text-xl font-black text-[#1E3A8A] flex items-center">
               <MessageSquare className="w-6 h-6 mr-3 text-[#FF9933]" /> Citizen Satisfaction & Sentiment
             </h3>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mt-1">Public sentiment analysis & trust index</p>
+            <p className="text-xs font-bold text-[#1E3A8A] uppercase tracking-widest mt-1">Public sentiment analysis & trust index</p>
           </div>
           <div className="text-right">
             <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">City Trust Index</p>
-            <p className="text-3xl font-black text-[#22C55E]">4.2<span className="text-sm text-gray-400">/5.0</span></p>
+            <p className="text-3xl font-black text-[#22C55E]">{(overallScore / 20).toFixed(1)}<span className="text-sm text-gray-400">/5.0</span></p>
           </div>
         </div>
 
@@ -297,8 +421,8 @@ export default function CMWarRoomDashboard() {
             <div className="h-[200px] w-full relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={CSAT_SENTIMENT} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
-                    {CSAT_SENTIMENT.map((entry, index) => (
+                  <Pie data={csatSentiment} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" stroke="none">
+                    {csatSentiment.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
@@ -306,12 +430,12 @@ export default function CMWarRoomDashboard() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-2xl font-black text-gray-900">85%</span>
+                <span className="text-2xl font-black text-gray-900">{csatSentiment[0].value}%</span>
                 <span className="text-[9px] font-bold text-gray-400 uppercase">Approval</span>
               </div>
             </div>
             <div className="flex gap-4 mt-4">
-              {CSAT_SENTIMENT.map((s, i) => (
+              {csatSentiment.map((s, i) => (
                 <div key={i} className="flex items-center text-[10px] font-bold text-gray-600">
                   <span className="w-2.5 h-2.5 rounded-full mr-1.5" style={{ backgroundColor: s.color }}></span>
                   {s.value}%
@@ -331,7 +455,7 @@ export default function CMWarRoomDashboard() {
             </div>
             <div className="w-full h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={CSAT_TREND} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                <AreaChart data={csatTrend} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorTrust" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#87CEEB" stopOpacity={0.4}/>
