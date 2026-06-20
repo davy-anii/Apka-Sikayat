@@ -45,47 +45,7 @@ export default function ComplaintHistoryPage() {
           fetchedList.push(doc.data());
         });
 
-        if (fetchedList.length === 0) {
-          console.log("No complaints found in Firestore. Seeding default history...");
-          const { generateTrackingToken, getAppUrl } = require('@/lib/urlHelper');
-          const seededList = MOCK_HISTORY.map((item, idx) => {
-            const trackingToken = generateTrackingToken();
-            const appUrl = getAppUrl();
-            const trackingLink = `${appUrl}/track/${trackingToken}`;
-            
-            return {
-              ...item,
-              uid: user.uid,
-              createdAt: new Date(new Date(item.date).getTime()).toISOString(),
-              assignedOfficer: idx % 2 === 0 ? "Rahul Verma (JE - Delhi Jal Board)" : "Pending Assignment",
-              timeline: [
-                { step: 1, title: "Complaint Submitted", date: new Date(item.date).toLocaleDateString('en-IN'), desc: "Your complaint was received by the system.", iconName: "FileText" },
-                { step: 2, title: "Assigned to Department", date: new Date(item.date).toLocaleDateString('en-IN'), desc: "Officer assigned.", iconName: "UserCheck" },
-                { step: 3, title: "In Progress", date: item.status === "In Progress" || item.status === "Resolved" || item.status === "Closed" ? new Date(item.date).toLocaleDateString('en-IN') : null, desc: "Team working on resolution.", iconName: "Wrench" },
-                { step: 4, title: "Pending Verification", date: item.status === "Resolved" || item.status === "Closed" ? new Date(item.date).toLocaleDateString('en-IN') : null, desc: "Awaiting field verification.", iconName: "ShieldCheck" },
-                { step: 5, title: "Resolved", date: item.status === "Resolved" || item.status === "Closed" ? new Date(item.date).toLocaleDateString('en-IN') : null, desc: "Issue fixed.", iconName: "CheckCircle2" },
-                { step: 6, title: "Closed", date: item.status === "Closed" ? new Date(item.date).toLocaleDateString('en-IN') : null, desc: "Closed.", iconName: "Lock" },
-              ],
-              currentStep: item.status === "Pending" ? 1 : item.status === "In Progress" ? 3 : item.status === "Resolved" ? 5 : item.status === "Closed" ? 6 : 4,
-              location: {
-                lat: 28.5276,
-                lng: 77.2184,
-                address: `${item.district}, Delhi`
-              },
-              description: `Auto-seeded mock data for ${item.title}. This represents a detailed description of the reported complaint in ${item.district}.`,
-              isAnonymous: false,
-              trackingToken,
-              trackingLink
-            };
-          });
-
-          for (const item of seededList) {
-            await setDoc(doc(db, "complaints", item.id), item);
-          }
-          setComplaints(seededList);
-        } else {
-          setComplaints(fetchedList);
-        }
+        setComplaints(fetchedList);
       } catch (error) {
         console.error("Error fetching complaints:", error);
       } finally {
