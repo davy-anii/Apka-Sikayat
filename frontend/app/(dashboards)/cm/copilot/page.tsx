@@ -55,13 +55,13 @@ export default function CMCopilotPage() {
   ]);
 
   const getBackendUrl = () => {
+    if (process.env.NEXT_PUBLIC_API_URL) {
+      return process.env.NEXT_PUBLIC_API_URL;
+    }
     if (typeof window !== 'undefined') {
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         return 'http://localhost:5002';
       }
-    }
-    if (process.env.NEXT_PUBLIC_API_URL) {
-      return process.env.NEXT_PUBLIC_API_URL;
     }
     if (typeof window !== 'undefined') {
       return window.location.origin.replace(':5001', ':5002').replace(':3000', ':5002');

@@ -323,11 +323,78 @@ export async function handleCopilotChat(req: Request, res: Response) {
     if (isReportRequest) {
       const isTodayRequested = queryLower.includes('today');
       const isExecutiveRequested = queryLower.includes('executive') || queryLower.includes('governance') || queryLower.includes('audit') || queryLower.includes('briefing') || queryLower.includes('summary');
-      const isComplaintsOnly = !isExecutiveRequested && (queryLower.includes('today') || queryLower.includes('complaint') || queryLower.includes('compain'));
+      
+      // Determine if they want a custom speech / topic PDF instead of database ledger
+      const isCustomTopic = queryLower.includes('speech') || queryLower.includes('directive') || queryLower.includes('policy') || queryLower.includes('note') || queryLower.includes('letter') || (!queryLower.includes('executive') && !queryLower.includes('governance') && !queryLower.includes('complaint') && !queryLower.includes('today') && !queryLower.includes('ledger') && !queryLower.includes('briefing'));
 
+      if (isCustomTopic) {
+        console.log(`[Copilot Controller] [Render Log] Custom PDF/Speech request detected: "${userQuery}"`);
+        
+        // Fetch complaints to seed Gemini with live data if relevant
+        const complaintsRef = collection(db, 'complaints');
+        console.log('[Copilot Controller] [Render Log] Fetching context for speech from Firestore...');
+        const querySnap = await getDocs(complaintsRef);
+        const complaints: any[] = [];
+        querySnap.forEach((doc) => {
+          complaints.push({ id: doc.id, ...doc.data() });
+        });
+        console.log(`[Copilot Controller] [Render Log] Context loaded with ${complaints.length} grievances.`);
+
+        const contextBlocks = complaints.slice(0, 15).map((c, idx) => {
+          return `[Grievance ${idx + 1}]: Category: ${c.category || 'General'}, Status: ${c.status || 'Pending'}, District: ${c.district || 'General'}, Details: ${c.title || c.description || 'N/A'}`;
+        }).join('\n');
+
+        const systemPrompt = `
+You are the AI Governance Copilot for the Chief Minister of Delhi.
+The user (Chief Minister) is requesting a document/speech/briefing on a specific topic (e.g. a speech on air pollution, directive, letter).
+Draft a highly professional, authoritative, and comprehensive text suitable to be converted directly into a PDF report.
+Use the following live database context if relevant to their request:
+${contextBlocks}
+
+IMPORTANT: Keep formatting clean. Do NOT use markdown bold/italic asterisks or hashtags since they will render poorly in the PDF. Use normal text paragraphs and clear double line breaks.
+`;
+
+        console.log('[Copilot Controller] [Render Log] Querying Gemini for speech draft...');
+        const generatedContent = await callGemini(systemPrompt, userQuery);
+        console.log('[Copilot Controller] [Render Log] Gemini speech draft successfully created.');
+
+        let title = "Delhi Governance Special Report";
+        let filename = "Governance_Special_Report";
+        if (queryLower.includes('speech')) {
+          title = "Chief Minister Official Speech";
+          filename = "CM_Official_Speech";
+        } else if (queryLower.includes('directive')) {
+          title = "Executive Governance Directive";
+          filename = "Executive_Directive";
+        }
+
+        if (queryLower.includes('pollution')) {
+          title += " - Air Pollution Mitigation";
+          filename += "_Air_Pollution";
+        } else if (queryLower.includes('water')) {
+          title += " - Water Resource Management";
+          filename += "_Water_Resource";
+        }
+
+        return res.status(200).json({
+          sender: 'ai',
+          text: generatedContent, // Render the generated speech directly in the chat bubble!
+          type: 'pdf_download',
+          data: {
+            title,
+            filename,
+            isExecutiveReport: false,
+            text: generatedContent
+          }
+        });
+      }
+
+      console.log(`[Copilot Controller] [Render Log] Standard Governance Report request detected: "${userQuery}"`);
+      const isComplaintsOnly = !isExecutiveRequested && (queryLower.includes('today') || queryLower.includes('complaint') || queryLower.includes('compain'));
       const reportPayload = await compileCMExecutiveReportData(isTodayRequested, isComplaintsOnly);
 
       if (isTodayRequested && reportPayload.total === 0) {
+        console.log('[Copilot Controller] [Render Log] No complaints registered today. Returning text alert.');
         return res.status(200).json({
           sender: 'ai',
           text: 'No complaints were registered today.',
@@ -335,6 +402,7 @@ export async function handleCopilotChat(req: Request, res: Response) {
         });
       }
 
+      console.log(`[Copilot Controller] [Render Log] Returning PDF payload download for: ${isComplaintsOnly ? 'Ledger' : 'Executive Report'}`);
       return res.status(200).json({
         sender: 'ai',
         text: ``, // Bypasses chat bubble rendering in UI

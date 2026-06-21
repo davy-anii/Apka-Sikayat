@@ -30,14 +30,18 @@ export function generateTrackingToken(): string {
 }
 
 export function getBackendUrl(): string {
+  // 1. Prioritize configured API environment variable (allows routing local frontend to Render backend)
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+
+  // 2. Default to localhost port 5002 for local development
   if (typeof window !== 'undefined' && window.location) {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'http://localhost:5002';
     }
   }
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
+
   if (typeof window !== 'undefined' && window.location) {
     // Auto-detect Render backend URL mapping
     if (window.location.hostname.endsWith('.onrender.com')) {
