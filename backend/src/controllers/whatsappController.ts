@@ -173,10 +173,6 @@ export async function handleWebhookEvent(req: Request, res: Response) {
     session = localSessions.get(from);
   }
 
-  if (!session) {
-    session = { state: 'START', phone: from };
-  }
-
   // Log conversation step
   try {
     await addDoc(collection(db, 'whatsapp_conversations'), {
@@ -192,9 +188,20 @@ export async function handleWebhookEvent(req: Request, res: Response) {
 
   try {
     // START Greeting Check
-    const isGreeting = ['hi', 'hello', 'complaint', 'help', 'hey'].includes(textBody.toLowerCase());
-    if (isGreeting && session.state !== 'START') {
-      session.state = 'START';
+    const isGreeting = ['hi', 'hello', 'complaint', 'help', 'hey', 'start'].includes(textBody.toLowerCase());
+
+    if (!session) {
+      if (isGreeting) {
+        session = { state: 'START', phone: from };
+      } else {
+        // Send a polite greeting/help message instead of starting the registration wizard
+        await sendReply(from, "Hello! To register a new grievance, please reply with *Hi*, *Hello*, or *Complaint*.");
+        return;
+      }
+    } else {
+      if (isGreeting) {
+        session.state = 'START';
+      }
     }
 
     // Step 1: Greeting & Welcome
