@@ -90,7 +90,11 @@ export async function runEscalationCycle(): Promise<{ processedCount: number; es
     console.log(`[Escalation Service] Cycle completed. Audited: ${processedCount}, Escalated: ${escalatedCount}`);
     return { processedCount, escalatedCount };
   } catch (error: any) {
-    console.error('[Escalation Service] Error running escalation cycle:', error.message);
+    console.warn('[Escalation Service] Warning: Failed to execute escalation cycle:', error.message);
+    if (error.message.includes('credentials') || error.message.includes('permission') || error.message.includes('default credentials')) {
+      console.log('[Escalation Service] [Simulation Fallback] Local server or Render instance does not have GCP credentials configured.');
+      return { processedCount: 0, escalatedCount: 0 };
+    }
     throw error;
   }
 }
