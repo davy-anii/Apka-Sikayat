@@ -7,38 +7,60 @@ import { generateVisitReport, generateSpeechPDF, generateBriefingPDF, generateCu
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 /**
- * Helper to call Gemini Flash API
+ * Helper to call Gemini Flash API with dynamic key rotation to bypass 429 rate limits
  */
 async function callGemini(systemPrompt: string, userMessage: string): Promise<string> {
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-    const requestBody = {
-      contents: [
-        {
-          parts: [{ text: `${systemPrompt}\n\nUser Query: ${userMessage}` }]
+  const keysPool = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_CITIZEN,
+    process.env.GEMINI_API_KEY_CHATBOT
+  ].filter(Boolean) as string[];
+
+  const uniqueKeys = Array.from(new Set(keysPool));
+
+  for (let i = 0; i < uniqueKeys.length; i++) {
+    const key = uniqueKeys[i];
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
+      const requestBody = {
+        contents: [
+          {
+            parts: [{ text: `${systemPrompt}\n\nUser Query: ${userMessage}` }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.2
         }
-      ],
-      generationConfig: {
-        temperature: 0.2
+      };
+
+      console.log(`[Gemini API Helper] [Render Log] Querying Gemini Flash using key pool index ${i}...`);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.status === 429) {
+        console.warn(`[Gemini API Helper] [Render Log] Key index ${i} rate limited (429). Retrying with next key pool candidate...`);
+        continue;
       }
-    };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestBody)
-    });
+      if (!response.ok) {
+        throw new Error(`Gemini response failed: ${response.status}`);
+      }
 
-    if (!response.ok) {
-      throw new Error(`Gemini response failed: ${response.status}`);
+      const data = await response.json();
+      console.log(`[Gemini API Helper] [Render Log] Successful response generated using key pool index ${i}.`);
+      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Unable to generate response.';
+    } catch (err: any) {
+      console.error(`[Gemini API Helper] [Render Log] Error calling Gemini Flash with key index ${i}:`, err.message);
+      if (i === uniqueKeys.length - 1) {
+        // If it was the last key pool option, return fallback text
+        return 'Systems are currently busy. Please try asking again in a moment.';
+      }
     }
-
-    const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Unable to generate response.';
-  } catch (err: any) {
-    console.error('[Gemini API Helper] Error calling Gemini Flash:', err.message);
-    return 'Systems are currently busy. Please try asking again in a moment.';
   }
+  return 'Systems are currently busy. Please try asking again in a moment.';
 }
 
 /**
