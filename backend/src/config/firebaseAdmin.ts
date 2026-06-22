@@ -1,8 +1,13 @@
 import * as admin from 'firebase-admin';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 
-dotenv.config({ path: path.join(__dirname, '../../frontend/.env') });
+let envPath = path.join(__dirname, '../../frontend/.env');
+if (!fs.existsSync(envPath)) {
+  envPath = path.join(__dirname, '../../../frontend/.env');
+}
+dotenv.config({ path: envPath });
 
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'apka-sikayat';
 

@@ -27,7 +27,12 @@ const heatmapService_1 = require("./services/heatmapService");
 const briefingWorker_1 = require("./workers/briefingWorker");
 const copilotController_1 = require("./controllers/copilotController");
 // Load environment variables
-dotenv_1.default.config({ path: path_1.default.join(__dirname, '../../frontend/.env') });
+const fs_1 = __importDefault(require("fs"));
+let envPath = path_1.default.join(__dirname, '../../frontend/.env');
+if (!fs_1.default.existsSync(envPath)) {
+    envPath = path_1.default.join(__dirname, '../../../frontend/.env');
+}
+dotenv_1.default.config({ path: envPath });
 const app = (0, express_1.default)();
 const server = http_1.default.createServer(app);
 // Dynamic CORS configurations

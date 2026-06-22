@@ -4,9 +4,14 @@ import { getFirestore } from "firebase/firestore";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 
 // Load environment variables
-dotenv.config({ path: path.join(__dirname, '../frontend/.env') });
+let envPath = path.join(__dirname, '../frontend/.env');
+if (!fs.existsSync(envPath)) {
+  envPath = path.join(__dirname, '../../frontend/.env');
+}
+dotenv.config({ path: envPath });
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,

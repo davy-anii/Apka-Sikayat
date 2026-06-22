@@ -10,8 +10,13 @@ const firestore_1 = require("firebase/firestore");
 const analytics_1 = require("firebase/analytics");
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
+const fs_1 = __importDefault(require("fs"));
 // Load environment variables
-dotenv_1.default.config({ path: path_1.default.join(__dirname, '../frontend/.env') });
+let envPath = path_1.default.join(__dirname, '../frontend/.env');
+if (!fs_1.default.existsSync(envPath)) {
+    envPath = path_1.default.join(__dirname, '../../frontend/.env');
+}
+dotenv_1.default.config({ path: envPath });
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,

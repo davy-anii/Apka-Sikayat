@@ -34,7 +34,12 @@ import {
 } from './controllers/copilotController';
 
 // Load environment variables
-dotenv.config({ path: path.join(__dirname, '../../frontend/.env') });
+import fs from 'fs';
+let envPath = path.join(__dirname, '../../frontend/.env');
+if (!fs.existsSync(envPath)) {
+  envPath = path.join(__dirname, '../../../frontend/.env');
+}
+dotenv.config({ path: envPath });
 
 const app = express();
 const server = http.createServer(app);
