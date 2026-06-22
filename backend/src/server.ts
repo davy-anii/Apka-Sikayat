@@ -404,6 +404,34 @@ app.get('/api/complaints/track/:token', publicTrackRateLimiter, async (req, res)
       }
 
       if (!docData) {
+        console.log(`[Tracking API] Admin SDK did not find token: ${token}. Trying Client SDK fallback...`);
+        try {
+          const { db } = require('../firebase');
+          const { doc: firestoreDoc, getDoc, collection, query, where, limit, getDocs } = require('firebase/firestore');
+          
+          const docRef = firestoreDoc(db, 'complaints', token);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            docData = docSnap.data();
+          } else {
+            const qToken = query(collection(db, 'complaints'), where('trackingToken', '==', token), limit(1));
+            const snapToken = await getDocs(qToken);
+            if (!snapToken.empty) {
+              docData = snapToken.docs[0].data();
+            } else {
+              const qId = query(collection(db, 'complaints'), where('complaintId', '==', token), limit(1));
+              const snapId = await getDocs(qId);
+              if (!snapId.empty) {
+                docData = snapId.docs[0].data();
+              }
+            }
+          }
+        } catch (clientErr: any) {
+          console.error('[Tracking API] Admin fallback to Client SDK failed:', clientErr.message);
+        }
+      }
+
+      if (!docData) {
         return res.status(404).json({ error: 'Complaint not found.' });
       }
 
