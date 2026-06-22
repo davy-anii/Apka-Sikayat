@@ -53,7 +53,7 @@ export default function CMCopilotPage() {
     {
       id: '1',
       sender: 'ai',
-      text: 'Good morning, Chief Minister. I am your RAG-powered Governance Copilot. My systems are fully indexed with live city grids and Pinecone vector stores. How can I assist you today? You can ask me to analyze district resolutions or prepare speeches.',
+      text: 'Hello, Chief Minister. I am your RAG-powered Governance Copilot. My systems are fully indexed with live city grids and Pinecone vector stores. How can I assist you today? You can ask me to analyze district resolutions or prepare speeches.',
     }
   ]);
 
