@@ -4,9 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, Map, Building2, BarChart3, 
-  FileSpreadsheet, BrainCircuit, Bell, LogOut, Settings, 
+import {
+  LayoutDashboard, Map, Building2, BarChart3,
+  FileSpreadsheet, BrainCircuit, Bell, LogOut, Settings,
   ShieldCheck, Bot, Sparkles
 } from 'lucide-react';
 
@@ -19,6 +19,7 @@ const CM_LINKS = [
   { name: 'Departments', href: '/cm/departments', icon: Building2 },
   { name: 'Analytics', href: '/cm/analytics', icon: BarChart3 },
   { name: 'AI Insights', href: '/cm/ai-insights', icon: BrainCircuit },
+  { name: 'Reports', href: '/cm/reports', icon: BrainCircuit },
 ];
 
 // =========================================================================
@@ -38,7 +39,7 @@ const TopRightActions = () => {
 
   return (
     <div className="flex items-center space-x-2 sm:space-x-4 relative" ref={menuRef}>
-      
+
       {/* REPORTS BUTTON (Moved from Sidebar) */}
       <Link href="/cm/reports" title="Executive Reports" className="relative p-2 text-gray-500 hover:text-[#1E3A8A] transition-colors rounded-full hover:bg-[#87CEEB]/10 flex items-center">
         <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -54,7 +55,7 @@ const TopRightActions = () => {
       </Link>
 
       {/* PROFILE DROPDOWN */}
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 ml-2 rounded-full bg-linear-to-br from-[#1E3A8A] to-[#0f172a] text-white font-black text-sm shadow-lg ring-2 ring-[#FF9933]/50 hover:ring-[#FF9933] transition-all"
       >
@@ -63,7 +64,7 @@ const TopRightActions = () => {
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.15 }}
             className="absolute right-0 top-14 sm:top-16 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[100]"
           >
@@ -72,7 +73,7 @@ const TopRightActions = () => {
               <p className="text-base font-black">Chief Minister's Office</p>
               <p className="text-xs text-blue-200 truncate">Govt. of NCT of Delhi</p>
             </div>
-            
+
             <div className="p-2 space-y-1">
               <Link href="/cm/settings" onClick={() => setIsOpen(false)} className="flex items-center px-3 py-2.5 text-sm font-bold text-gray-700 rounded-xl hover:bg-gray-50 transition-colors">
                 <Settings className="w-4 h-4 mr-3 text-gray-400" /> Platform Settings
@@ -100,11 +101,11 @@ const DraggableCopilot = () => {
       drag
       dragMomentum={false}
       // Prevents dragging text accidentally and ensures touch events work on mobile
-      style={{ touchAction: "none" }} 
+      style={{ touchAction: "none" }}
       className="fixed bottom-24 right-6 sm:bottom-12 sm:right-12 z-[100] flex flex-col items-center gap-2 cursor-grab active:cursor-grabbing"
     >
       {/* Floating Tooltip */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1 }}
         className="bg-white/90 backdrop-blur-sm text-[#1E3A8A] px-3 py-1.5 rounded-xl shadow-lg border border-gray-200 text-[10px] font-black uppercase tracking-widest flex items-center pointer-events-none"
       >
@@ -113,13 +114,13 @@ const DraggableCopilot = () => {
 
       {/* Main Bot Button */}
       <Link href="/cm/copilot" className="group relative">
-        <motion.div 
+        <motion.div
           whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
           className="flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-linear-to-br from-[#1E3A8A] to-[#0f172a] rounded-full shadow-2xl border-2 border-[#87CEEB]/50 relative overflow-hidden"
         >
           {/* Animated Background Glow */}
           <div className="absolute inset-0 bg-[#FF9933] opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-          
+
           <Bot className="w-7 h-7 sm:w-8 sm:h-8 text-[#FF9933] group-hover:animate-pulse relative z-10" />
         </motion.div>
 
@@ -139,12 +140,12 @@ const DraggableCopilot = () => {
 export default function CMLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   // Ensure the drag boundary is the entire screen
-  const containerRef = useRef<HTMLDivElement>(null); 
+  const containerRef = useRef<HTMLDivElement>(null);
   const isActive = (path: string) => pathname === path || (path !== '/cm' && pathname.startsWith(path));
 
   return (
     <div ref={containerRef} className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans relative overflow-hidden">
-      
+
       {/* --------------------------------------------------------- */}
       {/* DESKTOP SIDEBAR */}
       {/* --------------------------------------------------------- */}
@@ -164,13 +165,12 @@ export default function CMLayout({ children }: { children: React.ReactNode }) {
             const Icon = link.icon;
             const active = isActive(link.href);
             return (
-              <Link 
+              <Link
                 key={link.name} href={link.href}
-                className={`flex items-center px-4 py-3.5 rounded-xl transition-all font-bold text-sm ${
-                  active 
-                    ? 'bg-[#1E3A8A] text-white shadow-md shadow-[#1E3A8A]/20' 
+                className={`flex items-center px-4 py-3.5 rounded-xl transition-all font-bold text-sm ${active
+                    ? 'bg-[#1E3A8A] text-white shadow-md shadow-[#1E3A8A]/20'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-[#1E3A8A]'
-                }`}
+                  }`}
               >
                 <Icon className={`w-5 h-5 mr-3 ${active ? 'text-[#FF9933]' : 'text-gray-400'}`} />
                 {link.name}
@@ -184,7 +184,7 @@ export default function CMLayout({ children }: { children: React.ReactNode }) {
       {/* MAIN CONTENT AREA */}
       {/* --------------------------------------------------------- */}
       <main className="flex-1 md:ml-72 flex flex-col min-h-screen relative overflow-y-auto">
-        
+
         {/* Desktop Top Header */}
         <header className="hidden md:flex h-24 bg-white/90 backdrop-blur-xl border-b border-gray-200 items-center justify-between px-10 sticky top-0 z-30 shadow-sm">
           <div className="flex items-center">
@@ -222,7 +222,7 @@ export default function CMLayout({ children }: { children: React.ReactNode }) {
           const Icon = link.icon;
           const active = isActive(link.href);
           return (
-            <Link 
+            <Link
               key={link.name} href={link.href}
               className={`flex-shrink-0 flex flex-col items-center justify-center w-[76px] py-3 transition-colors ${active ? 'text-[#1E3A8A]' : 'text-gray-400'}`}
             >
@@ -234,7 +234,7 @@ export default function CMLayout({ children }: { children: React.ReactNode }) {
           );
         })}
       </nav>
-      
+
     </div>
   );
 }

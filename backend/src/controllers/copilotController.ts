@@ -7,60 +7,38 @@ import { generateVisitReport, generateSpeechPDF, generateBriefingPDF, generateCu
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 /**
- * Helper to call Gemini Flash API with dynamic key rotation to bypass 429 rate limits
+ * Helper to call Gemini Flash API
  */
 async function callGemini(systemPrompt: string, userMessage: string): Promise<string> {
-  const keysPool = [
-    process.env.GEMINI_API_KEY,
-    process.env.GEMINI_API_KEY_CITIZEN,
-    process.env.GEMINI_API_KEY_CHATBOT
-  ].filter(Boolean) as string[];
-
-  const uniqueKeys = Array.from(new Set(keysPool));
-
-  for (let i = 0; i < uniqueKeys.length; i++) {
-    const key = uniqueKeys[i];
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`;
-      const requestBody = {
-        contents: [
-          {
-            parts: [{ text: `${systemPrompt}\n\nUser Query: ${userMessage}` }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.2
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const requestBody = {
+      contents: [
+        {
+          parts: [{ text: `${systemPrompt}\n\nUser Query: ${userMessage}` }]
         }
-      };
-
-      console.log(`[Gemini API Helper] [Render Log] Querying Gemini Flash using key pool index ${i}...`);
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (response.status === 429) {
-        console.warn(`[Gemini API Helper] [Render Log] Key index ${i} rate limited (429). Retrying with next key pool candidate...`);
-        continue;
+      ],
+      generationConfig: {
+        temperature: 0.2
       }
+    };
 
-      if (!response.ok) {
-        throw new Error(`Gemini response failed: ${response.status}`);
-      }
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
 
-      const data = await response.json();
-      console.log(`[Gemini API Helper] [Render Log] Successful response generated using key pool index ${i}.`);
-      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Unable to generate response.';
-    } catch (err: any) {
-      console.error(`[Gemini API Helper] [Render Log] Error calling Gemini Flash with key index ${i}:`, err.message);
-      if (i === uniqueKeys.length - 1) {
-        // If it was the last key pool option, return fallback text
-        return 'Systems are currently busy. Please try asking again in a moment.';
-      }
+    if (!response.ok) {
+      throw new Error(`Gemini response failed: ${response.status}`);
     }
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'Unable to generate response.';
+  } catch (err: any) {
+    console.error('[Gemini API Helper] Error calling Gemini Flash:', err.message);
+    return 'Systems are currently busy. Please try asking again in a moment.';
   }
-  return 'Systems are currently busy. Please try asking again in a moment.';
 }
 
 /**
@@ -134,7 +112,7 @@ async function compileCMExecutiveReportData(isTodayRequested: boolean, isComplai
 
   // Calculate CSAT dynamically
   const ratings = complaints.filter(c => c.feedback?.rating).map(c => c.feedback.rating);
-  const avgCsat = ratings.length > 0 
+  const avgCsat = ratings.length > 0
     ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) + '/5.0'
     : 'Insufficient citizen feedback available.';
 
@@ -185,8 +163,8 @@ async function compileCMExecutiveReportData(isTodayRequested: boolean, isComplai
   const auditFlags = complaints.filter(c => ['Resolved', 'Closed'].includes(c.status) && c.feedback?.rating && c.feedback.rating <= 2).length;
 
   const todayNew = allComplaints.filter(c => getComplaintDateStr(c.createdAt) === todayStr).length;
-  const todayResolved = allComplaints.filter(c => 
-    getComplaintDateStr(c.createdAt) === todayStr && 
+  const todayResolved = allComplaints.filter(c =>
+    getComplaintDateStr(c.createdAt) === todayStr &&
     ['Resolved', 'Closed', 'Citizen_Verified'].includes(c.status)
   ).length;
 
@@ -337,7 +315,7 @@ export async function handleCopilotChat(req: Request, res: Response) {
 
   try {
     const queryLower = userQuery.toLowerCase();
-    
+
     // Intent Detection: Check if they are asking for a PDF report / briefing / summary / audit
     const reportTriggers = ['pdf', 'report', 'briefing', 'summary', 'audit', 'executive briefing'];
     const isReportRequest = reportTriggers.some(t => queryLower.includes(t));
@@ -345,13 +323,13 @@ export async function handleCopilotChat(req: Request, res: Response) {
     if (isReportRequest) {
       const isTodayRequested = queryLower.includes('today');
       const isExecutiveRequested = queryLower.includes('executive') || queryLower.includes('governance') || queryLower.includes('audit') || queryLower.includes('briefing') || queryLower.includes('summary');
-      
+
       // Determine if they want a custom speech / topic PDF instead of database ledger
       const isCustomTopic = queryLower.includes('speech') || queryLower.includes('directive') || queryLower.includes('policy') || queryLower.includes('note') || queryLower.includes('letter') || (!queryLower.includes('executive') && !queryLower.includes('governance') && !queryLower.includes('complaint') && !queryLower.includes('today') && !queryLower.includes('ledger') && !queryLower.includes('briefing'));
 
       if (isCustomTopic) {
         console.log(`[Copilot Controller] [Render Log] Custom PDF/Speech request detected: "${userQuery}"`);
-        
+
         // Fetch complaints to seed Gemini with live data if relevant
         const complaintsRef = collection(db, 'complaints');
         console.log('[Copilot Controller] [Render Log] Fetching context for speech from Firestore...');
@@ -431,7 +409,7 @@ IMPORTANT: Keep formatting clean. Do NOT use markdown bold/italic asterisks or h
         type: 'pdf_download',
         data: {
           title: isComplaintsOnly ? "Daily Grievance Ledger" : "Chief Minister Executive Governance Report",
-          filename: isComplaintsOnly 
+          filename: isComplaintsOnly
             ? (isTodayRequested ? "CM_Today_Grievance_Ledger" : "CM_Grievance_Ledger")
             : (isTodayRequested ? "CM_Today_Executive_Report" : "CM_Executive_Governance_Report"),
           isExecutiveReport: true,
@@ -573,7 +551,7 @@ export async function handleVisitIntelligence(req: Request, res: Response) {
     // 1. Fetch complaints in this district
     const complaintsRef = collection(db, 'complaints');
     const querySnap = await getDocs(complaintsRef);
-    
+
     const districtComplaints: any[] = [];
     querySnap.forEach((doc) => {
       const data = doc.data();
@@ -586,7 +564,7 @@ export async function handleVisitIntelligence(req: Request, res: Response) {
     const resolved = districtComplaints.filter(c => ['Resolved', 'Closed', 'Citizen_Verified'].includes(c.status)).length;
     const pending = total - resolved;
     const critical = districtComplaints.filter(c => c.priority === 'CRITICAL' && !['Resolved', 'Closed', 'Citizen_Verified'].includes(c.status)).length;
-    
+
     const categoryCounts: Record<string, number> = {};
     districtComplaints.forEach(c => {
       if (c.category) {
@@ -625,7 +603,7 @@ export async function handleVisitIntelligence(req: Request, res: Response) {
 
     if (format === 'SPEECH_PDF') {
       const speechText = `Dear Citizens of ${areaName},\n\nIt is my privilege to be here with you today. Our administration is committed to making governance transparent and accountable. In ${district}, we have registered a total of ${total} complaints, and I am proud to share that we have successfully resolved ${resolved} of them.\n\nHowever, work remains. We currently have ${pending} pending issues, including ${critical} critical priorities. I have directed our departments to resolve these immediately. Thank you for your continued partnership.`;
-      
+
       const pdfBuffer = await generateSpeechPDF(speechText, { areaName });
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename=Speech_${areaName}.pdf`);
