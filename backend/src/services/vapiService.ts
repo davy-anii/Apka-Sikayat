@@ -34,8 +34,7 @@ export async function triggerVapiOutboundCall(customerNumber: string, citizenNam
 
   const body = {
     phoneNumber: {
-      provider: "twilio",
-      number: TWILIO_PHONE_NUMBER,
+      twilioPhoneNumber: TWILIO_PHONE_NUMBER,
       twilioAccountSid: TWILIO_ACCOUNT_SID,
       twilioAuthToken: TWILIO_AUTH_TOKEN
     },
