@@ -48,7 +48,7 @@ export async function triggerVapiOutboundCall(customerNumber: string, citizenNam
       },
       voice: {
         provider: "vapi",
-        voiceId: "elliot"
+        voiceId: "Elliot"
       },
       model: {
         provider: "openai",
