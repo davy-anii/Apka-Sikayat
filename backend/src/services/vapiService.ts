@@ -20,6 +20,11 @@ function getServerUrl() {
 }
 
 export async function triggerVapiOutboundCall(customerNumber: string, citizenName: string): Promise<any> {
+  console.log("DEBUG VAPI ENV LOADING:", {
+    VAPI_PRIVATE_KEY: VAPI_PRIVATE_KEY ? "LOADED" : "MISSING",
+    TWILIO_ACCOUNT_SID: TWILIO_ACCOUNT_SID ? "LOADED" : "MISSING",
+    TWILIO_PHONE_NUMBER: TWILIO_PHONE_NUMBER ? "LOADED" : "MISSING"
+  });
   console.log(`[VAPI Service] Requesting outbound call for ${customerNumber} (${citizenName})...`);
 
   let formattedTo = customerNumber.trim().replace(/[\s\-\(\)]/g, '');
