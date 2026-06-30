@@ -11,11 +11,6 @@ const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
 const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER || "";
 
 function getServerUrl() {
-  const ngrokUrl = process.env.NGROK_PUBLIC_URL || process.env.NEXT_PUBLIC_NGROK_PUBLIC_URL;
-  if (ngrokUrl) {
-    const cleanUrl = ngrokUrl.endsWith('/') ? ngrokUrl.slice(0, -1) : ngrokUrl;
-    return `${cleanUrl}/api/vapi/webhook`;
-  }
   return 'https://apka-sikayat.onrender.com/api/vapi/webhook';
 }
 
@@ -33,6 +28,8 @@ export async function triggerVapiOutboundCall(customerNumber: string, citizenNam
   console.log(`[VAPI Service] Callback serverUrl: ${serverUrl}`);
 
   const body = {
+    type: "outboundPhoneCall",
+    phoneCallProviderBypassEnabled: true,
     phoneNumber: {
       twilioPhoneNumber: TWILIO_PHONE_NUMBER,
       twilioAccountSid: TWILIO_ACCOUNT_SID,
@@ -156,6 +153,7 @@ Then end the call. Do not continue conversation.`
   };
 
   try {
+    console.log(`[VOICE] Twilio outbound call initiated`);
     const response = await fetch("https://api.vapi.ai/call", {
       method: "POST",
       headers: {
@@ -167,6 +165,12 @@ Then end the call. Do not continue conversation.`
 
     if (!response.ok) {
       const errText = await response.text();
+      console.error(`[VOICE] Fail-Safe Recovery Active:
+- Error Source: VAPI Outbound Call Dispatch
+- Failing API: POST https://api.vapi.ai/call
+- HTTP Status Code: ${response.status}
+- Response Body: ${errText}
+- Suggested Fix: Check Vapi/Twilio credentials in .env, ensure phoneCallProviderBypassEnabled is true, and verify phone numbers match E.164 formatting.`);
       throw new Error(`VAPI status ${response.status}: ${errText}`);
     }
 

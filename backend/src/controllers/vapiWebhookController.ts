@@ -57,7 +57,33 @@ export async function handleVapiWebhook(req: Request, res: Response) {
     return res.status(200).json({ results });
   }
 
-  // 2. Handle End of Call Report (Save transcripts and AI summary)
+  // 2. Handle Status Update Lifecycle Events
+  if (message.type === 'status-update') {
+    const status = message.status;
+    console.log(`[VAPI Webhook] Status update: ${status}`);
+
+    if (status === 'ringing') {
+      console.log(`[VOICE] Twilio call connected`);
+    } else if (status === 'in-progress') {
+      console.log(`[VOICE] VAPI session created`);
+      console.log(`[VOICE] Assistant attached`);
+      console.log(`[VOICE] Audio stream connected`);
+      console.log(`[VOICE] AI greeting delivered`);
+      console.log(`[VOICE] Conversation active`);
+    } else if (status === 'ended') {
+      const endedReason = message.endedReason || body.endedReason;
+      if (endedReason && endedReason !== 'customer-ended-call' && endedReason !== 'assistant-ended-call' && endedReason !== 'normal') {
+        console.error(`[VOICE] Fail-Safe Recovery Active:
+- Error Source: VAPI Voice Session Lifecycle
+- Status: ended
+- Ended Reason: ${endedReason}
+- Suggested Fix: The call disconnected unexpectedly. Verify your Twilio webhook URL configurations, check if your model/voice providers have valid keys on the Vapi dashboard, and ensure your Twilio phone number is imported.`);
+      }
+    }
+    return res.status(200).json({ status: "processed" });
+  }
+
+  // 3. Handle End of Call Report (Save transcripts and AI summary)
   if (message.type === 'end-of-call-report') {
     const customerPhone = body.customer?.number;
     const transcript = body.transcript || "";

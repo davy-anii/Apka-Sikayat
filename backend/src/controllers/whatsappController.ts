@@ -297,6 +297,7 @@ export async function handleWebhookEvent(req: Request, res: Response) {
 
   // Call Me Intent Detection
   if (textBody.toLowerCase() === 'call me') {
+    console.log(`[VOICE] WhatsApp trigger received`);
     console.log(`[WhatsApp Webhook] "Call Me" intent detected from ${from}. Checking database...`);
     try {
       const database = isFirebaseAdminInitialized && adminDb ? adminDb : null;
@@ -334,6 +335,7 @@ export async function handleWebhookEvent(req: Request, res: Response) {
         return;
       }
 
+      console.log(`[VOICE] Citizen number detected`);
       console.log(`[WhatsApp Webhook] Citizen verified: ${citizenDoc.fullName} (${citizenDoc.phone}). Triggering VAPI call...`);
       await sendWhatsAppText(from, `Connecting you to our AI Voice Governance Agent. Please expect a phone call on ${citizenDoc.phone} shortly...`);
 
