@@ -2,7 +2,12 @@ import twilio from 'twilio';
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config({ path: path.join(__dirname, '../../frontend/.env') });
+import fs from 'fs';
+let envPath = path.join(__dirname, '../../frontend/.env');
+if (!fs.existsSync(envPath)) {
+  envPath = path.join(__dirname, '../../../frontend/.env');
+}
+dotenv.config({ path: envPath });
 
 const ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
 const AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;

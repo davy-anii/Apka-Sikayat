@@ -2,7 +2,12 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config({ path: path.join(__dirname, '../../frontend/.env') });
+import fs from 'fs';
+let envPath = path.join(__dirname, '../../frontend/.env');
+if (!fs.existsSync(envPath)) {
+  envPath = path.join(__dirname, '../../../frontend/.env');
+}
+dotenv.config({ path: envPath });
 
 // Ensure we have a 32-byte key by hashing the configured env key
 const ENCRYPTION_KEY_RAW = process.env.SMS_ENCRYPTION_KEY || '';

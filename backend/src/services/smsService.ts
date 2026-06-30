@@ -2,7 +2,12 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load env from frontend/.env for consistency if needed
-dotenv.config({ path: path.join(__dirname, '../../frontend/.env') });
+import fs from 'fs';
+let envPath = path.join(__dirname, '../../frontend/.env');
+if (!fs.existsSync(envPath)) {
+  envPath = path.join(__dirname, '../../../frontend/.env');
+}
+dotenv.config({ path: envPath });
 
 export interface SMSSendParams {
   id: string;

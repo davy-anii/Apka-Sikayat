@@ -1,7 +1,12 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-dotenv.config({ path: path.join(__dirname, '../../frontend/.env') });
+import fs from 'fs';
+let envPath = path.join(__dirname, '../../frontend/.env');
+if (!fs.existsSync(envPath)) {
+  envPath = path.join(__dirname, '../../../frontend/.env');
+}
+dotenv.config({ path: envPath });
 
 const VAPI_PRIVATE_KEY = process.env.VAPI_PRIVATE_KEY || "";
 const VAPI_PUBLIC_KEY = process.env.VAPI_PUBLIC_KEY || "";
